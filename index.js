@@ -29,7 +29,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Total Accumulator Bot ONLINE as ${c.user.tag}`);
+  console.log(`✅ Resources Tab Accumulator Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -47,46 +47,58 @@ client.on(Events.MessageCreate, async (message) => {
     const leatherQty = leatherMatch ? parseInt(leatherMatch[1]) : 0;
     const manaQty = manaMatch ? parseInt(manaMatch[1]) : 0;
 
-    // Ignore chatter that doesn't contain any tracked resource claims
     if (ironQty === 0 && leatherQty === 0 && manaQty === 0) return;
 
     try {
         await doc.loadInfo();
-        const sheet = doc.sheetsByIndex[0]; // Interacts with your first tab
+        
+        // FIX: Specifically look for the tab named "RESOURCES" instead of just index 0
+        const sheet = doc.sheetsByTitle["RESOURCES"]; 
 
-        // Tell the bot headers are on Row 1
-        await sheet.loadHeaderRow(1);
-        const rows = await sheet.getRows();
-
-        // Target the "Resource Amount" row directly (Row 3 on your sheet is index 1 in our rows list)
-        // This targets the exact gray cells from your screenshot
-        let totalRow = rows[1]; 
-
-        if (!totalRow) {
-            console.error("Could not locate the total accumulation row in the spreadsheet.");
+        if (!sheet) {
+            console.error("❌ Could not find a tab named 'RESOURCES' on this spreadsheet.");
             await message.react('⚠️');
             return;
         }
 
-        // Get the current totals from Columns C, D, and E
+        await sheet.loadHeaderRow(1);
+        const rows = await sheet.getRows();
+
+        // Find the row where Column B contains "Resource Amount"
+        let totalRow = rows.find(row => {
+            const rawValues = row._rawData; 
+            return rawValues.some(val => String(val).replace(/\s+/g, '').toLowerCase() === 'resourceamount');
+        });
+
+        // Fallback: If it can't read the text inside that cell, default to the second data row (Row 3)
+        if (!totalRow) {
+            totalRow = rows[1]; 
+        }
+
+        if (!totalRow) {
+            console.error("❌ Could not locate total accumulation row inside RESOURCES tab.");
+            await message.react('⚠️');
+            return;
+        }
+
+        // Pull values using exact header text match from your screenshot
         const currentIron = parseInt(totalRow.get('Iron')) || 0;
         const currentLeather = parseInt(totalRow.get('Leather')) || 0;
         const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
 
-        // Add the newly reported quantities to the old numbers
+        // Save totals back as strings
         totalRow.set('Iron', String(currentIron + ironQty));
         totalRow.set('Leather', String(currentLeather + leatherQty));
         totalRow.set('Mana Crystals', String(currentMana + manaQty));
         
-        // Save the updated totals back to the sheet row
         await totalRow.save();
 
-        console.log(`📦 Added ${ironQty} Iron, ${leatherQty} Leather, ${manaQty} Mana to global pool.`);
+        console.log(`📦 Added to RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana Crystals`);
         await message.react('📦');
 
     } catch (err) {
         console.error("Error logging resources:", err);
-        await message.react('❌');
+        await message.react('⚠️');
     }
 });
 
