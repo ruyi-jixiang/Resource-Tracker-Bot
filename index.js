@@ -38,14 +38,14 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Regex parsing to capture numbers
-    const ironMatch = content.match(/(\d+)\s*x?\s*iron/);
-    const leatherMatch = content.match(/(\d+)\s*x?\s*leather/);
-    const manaMatch = content.match(/(\d+)\s*x?\s*mana\s*crystal/);
+    // FIX: Modified regex to look for an optional positive (+) or negative (-) sign before the number
+    const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
+    const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
+    const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
 
-    const ironQty = ironMatch ? parseInt(ironMatch[1]) : 0;
-    const leatherQty = leatherMatch ? parseInt(leatherMatch[1]) : 0;
-    const manaQty = manaMatch ? parseInt(manaMatch[1]) : 0;
+    const ironQty = ironMatch ? parseInt(ironMatch[1], 10) : 0;
+    const leatherQty = leatherMatch ? parseInt(leatherMatch[1], 10) : 0;
+    const manaQty = manaMatch ? parseInt(manaMatch[1], 10) : 0;
 
     if (ironQty === 0 && leatherQty === 0 && manaQty === 0) return;
 
@@ -81,7 +81,7 @@ client.on(Events.MessageCreate, async (message) => {
         const currentLeather = parseInt(totalRow.get('Leather')) || 0;
         const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
 
-        // Calculate new totals
+        // Math handles addition/subtraction naturally (e.g., 45 + (-2) = 43)
         const newIron = currentIron + ironQty;
         const newLeather = currentLeather + leatherQty;
         const newMana = currentMana + manaQty;
@@ -93,16 +93,30 @@ client.on(Events.MessageCreate, async (message) => {
         
         await totalRow.save();
 
-        console.log(`📦 Added to RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana Crystals`);
-        await message.react('📦');
+        console.log(`📦 Updated RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana Crystals`);
+        
+        // React with a custom emoji depending on whether it's an overall deposit or withdrawal
+        if (ironQty < 0 || leatherQty < 0 || manaQty < 0) {
+            await message.react('🛠️'); // Tools emoji for spending/crafting
+        } else {
+            await message.react('📦'); // Box emoji for depositing
+        }
 
+        // ANNOUNCEMENT LOGIC
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
-            // Build a clean, readable breakdown of what was added
-            let summary = `### 📥 Materials Deposited by ${message.author}\n`;
-            if (ironQty > 0) summary += `• 🟥 **Iron:** +${ironQty} *(Total: ${newIron})*\n`;
-            if (leatherQty > 0) summary += `• 🟫 **Leather:** +${leatherQty} *(Total: ${newLeather})*\n`;
-            if (manaQty > 0) summary += `• 🟦 **Mana Crystals:** +${manaQty} *(Total: ${newMana})*\n`;
+            // Helper function to format the string cleanly based on positive or negative change
+            const formatLine = (qty, label, currentTotal) => {
+                if (qty === 0) return '';
+                const emoji = label === 'Iron' ? '🟥' : label === 'Leather' ? '🟫' : '🟦';
+                const actionSign = qty > 0 ? `+${qty}` : `${qty}`; // - sign is automatically included for negative numbers
+                return `• ${emoji} **${label}:** ${actionSign} *(Total: ${currentTotal})*\n`;
+            };
+
+            let summary = `### 📑 Resource Log Update by ${message.author}\n`;
+            summary += formatLine(ironQty, 'Iron', newIron);
+            summary += formatLine(leatherQty, 'Leather', newLeather);
+            summary += formatLine(manaQty, 'Mana Crystals', newMana);
 
             await announceChannel.send(summary);
         } else {
