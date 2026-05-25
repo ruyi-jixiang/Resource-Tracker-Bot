@@ -29,7 +29,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Resource Tracker Bot ONLINE as ${c.user.tag}`);
+  console.log(`✅ Total Accumulator Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -38,7 +38,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Regex parsing to capture numbers from patterns like "12x iron", "3 leather", "5 mana crystals"
+    // Regex parsing to capture numbers from patterns like "15 iron", "5 leather", "2 mana crystals"
     const ironMatch = content.match(/(\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(\d+)\s*x?\s*mana\s*crystal/);
@@ -54,44 +54,34 @@ client.on(Events.MessageCreate, async (message) => {
         await doc.loadInfo();
         const sheet = doc.sheetsByIndex[0]; // Interacts with your first tab
 
+        // Tell the bot headers are on Row 1
         await sheet.loadHeaderRow(1);
         const rows = await sheet.getRows();
 
-        const userTag = message.author.tag;
+        // Target the "Resource Amount" row directly (Row 3 on your sheet is index 1 in our rows list)
+        // This targets the exact gray cells from your screenshot
+        let totalRow = rows[1]; 
 
-        // Try to find if this user already has a row in the spreadsheet
-        // Assuming Column A is where you track who submitted it, or we create it
-        let userRow = rows.find(row => {
-            const currentCell = row.get('Discord User');
-            return currentCell && currentCell.trim().toLowerCase() === userTag.toLowerCase();
-        });
-
-        if (userRow) {
-            // USER EXISTS: Add the new quantities to their current totals
-            const currentIron = parseInt(userRow.get('Iron')) || 0;
-            const currentLeather = parseInt(userRow.get('Leather')) || 0;
-            // Matches your sheet's exact header spelling: "Mana Crystals"
-            const currentMana = parseInt(userRow.get('Mana Crystals')) || 0;
-
-            userRow.set('Iron', String(currentIron + ironQty));
-            userRow.set('Leather', String(currentLeather + leatherQty));
-            userRow.set('Mana Crystals', String(currentMana + manaQty));
-            await userRow.save();
-
-            console.log(`🔄 Updated totals for ${userTag}`);
-        } else {
-            // NEW USER: Append a clean brand new row
-            await sheet.addRow({
-                'Discord User': userTag,
-                'Iron': String(ironQty),
-                'Leather': String(leatherQty),
-                'Mana Crystals': String(manaQty)
-            });
-
-            console.log(`➕ Added new row entry for ${userTag}`);
+        if (!totalRow) {
+            console.error("Could not locate the total accumulation row in the spreadsheet.");
+            await message.react('⚠️');
+            return;
         }
 
-        // React with a package emoji to signal success
+        // Get the current totals from Columns C, D, and E
+        const currentIron = parseInt(totalRow.get('Iron')) || 0;
+        const currentLeather = parseInt(totalRow.get('Leather')) || 0;
+        const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
+
+        // Add the newly reported quantities to the old numbers
+        totalRow.set('Iron', String(currentIron + ironQty));
+        totalRow.set('Leather', String(currentLeather + leatherQty));
+        totalRow.set('Mana Crystals', String(currentMana + manaQty));
+        
+        // Save the updated totals back to the sheet row
+        await totalRow.save();
+
+        console.log(`📦 Added ${ironQty} Iron, ${leatherQty} Leather, ${manaQty} Mana to global pool.`);
         await message.react('📦');
 
     } catch (err) {
