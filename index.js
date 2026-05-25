@@ -5,7 +5,6 @@ const { JWT } = require('google-auth-library');
 const RESOURCE_CHANNEL_ID = '1508516445653303296'; 
 const SPREADSHEET_ID = '1gX6WECCSj0D_QJY0j06BFT6RMYVCrgG1-VUgw9fIVCE'; 
 
-
 const creds = process.env.GOOGLE_CREDS 
   ? JSON.parse(process.env.GOOGLE_CREDS) 
   : require('./credentials.json');
@@ -38,7 +37,6 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Regex parsing to capture numbers from patterns like "15 iron", "5 leather", "2 mana crystals"
     const ironMatch = content.match(/(\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(\d+)\s*x?\s*mana\s*crystal/);
@@ -52,7 +50,6 @@ client.on(Events.MessageCreate, async (message) => {
     try {
         await doc.loadInfo();
         
-        // FIX: Specifically look for the tab named "RESOURCES" instead of just index 0
         const sheet = doc.sheetsByTitle["RESOURCES"]; 
 
         if (!sheet) {
@@ -61,18 +58,17 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        await sheet.loadHeaderRow(1);
+        await sheet.loadHeaderRow(2);
+        
         const rows = await sheet.getRows();
 
-        // Find the row where Column B contains "Resource Amount"
+   
         let totalRow = rows.find(row => {
-            const rawValues = row._rawData; 
-            return rawValues.some(val => String(val).replace(/\s+/g, '').toLowerCase() === 'resourceamount');
+            return row.get('Resource') === 'Amount';
         });
 
-        // Fallback: If it can't read the text inside that cell, default to the second data row (Row 3)
         if (!totalRow) {
-            totalRow = rows[1]; 
+            totalRow = rows[0]; 
         }
 
         if (!totalRow) {
@@ -81,12 +77,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Pull values using exact header text match from your screenshot
         const currentIron = parseInt(totalRow.get('Iron')) || 0;
         const currentLeather = parseInt(totalRow.get('Leather')) || 0;
         const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
 
-        // Save totals back as strings
         totalRow.set('Iron', String(currentIron + ironQty));
         totalRow.set('Leather', String(currentLeather + leatherQty));
         totalRow.set('Mana Crystals', String(currentMana + manaQty));
