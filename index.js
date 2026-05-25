@@ -4,6 +4,7 @@ const { JWT } = require('google-auth-library');
 
 const RESOURCE_CHANNEL_ID = '1508516445653303296'; 
 const SPREADSHEET_ID = '1gX6WECCSj0D_QJY0j06BFT6RMYVCrgG1-VUgw9fIVCE'; 
+const ANNOUNCEMENT_CHANNEL_ID = '1504290958530052340';
 
 const creds = process.env.GOOGLE_CREDS 
   ? JSON.parse(process.env.GOOGLE_CREDS) 
@@ -37,6 +38,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
+    // Regex parsing to capture numbers
     const ironMatch = content.match(/(\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(\d+)\s*x?\s*mana\s*crystal/);
@@ -59,10 +61,8 @@ client.on(Events.MessageCreate, async (message) => {
         }
 
         await sheet.loadHeaderRow(2);
-        
         const rows = await sheet.getRows();
 
-   
         let totalRow = rows.find(row => {
             return row.get('Resource') === 'Amount';
         });
@@ -81,14 +81,33 @@ client.on(Events.MessageCreate, async (message) => {
         const currentLeather = parseInt(totalRow.get('Leather')) || 0;
         const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
 
-        totalRow.set('Iron', String(currentIron + ironQty));
-        totalRow.set('Leather', String(currentLeather + leatherQty));
-        totalRow.set('Mana Crystals', String(currentMana + manaQty));
+        // Calculate new totals
+        const newIron = currentIron + ironQty;
+        const newLeather = currentLeather + leatherQty;
+        const newMana = currentMana + manaQty;
+
+        // Save totals back as strings
+        totalRow.set('Iron', String(newIron));
+        totalRow.set('Leather', String(newLeather));
+        totalRow.set('Mana Crystals', String(newMana));
         
         await totalRow.save();
 
         console.log(`📦 Added to RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana Crystals`);
         await message.react('📦');
+
+        const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
+        if (announceChannel) {
+            // Build a clean, readable breakdown of what was added
+            let summary = `### 📥 Materials Deposited by ${message.author}\n`;
+            if (ironQty > 0) summary += `• 🟥 **Iron:** +${ironQty} *(Total: ${newIron})*\n`;
+            if (leatherQty > 0) summary += `• 🟫 **Leather:** +${leatherQty} *(Total: ${newLeather})*\n`;
+            if (manaQty > 0) summary += `• 🟦 **Mana Crystals:** +${manaQty} *(Total: ${newMana})*\n`;
+
+            await announceChannel.send(summary);
+        } else {
+            console.error("❌ Announcement channel not found. Check your ANNOUNCEMENT_CHANNEL_ID.");
+        }
 
     } catch (err) {
         console.error("Error logging resources:", err);
