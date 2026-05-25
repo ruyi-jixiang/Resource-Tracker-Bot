@@ -38,16 +38,23 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // FIX: Modified regex to look for an optional positive (+) or negative (-) sign before the number
+    // Regex parsing to capture numbers for all 6 resource types
     const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
+    const stickMatch = content.match(/(-?\+?\d+)\s*x?\s*stick/);
+    const stoneMatch = content.match(/(-?\+?\d+)\s*x?\s*stone/);
+    const condensedMatch = content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystal/);
 
     const ironQty = ironMatch ? parseInt(ironMatch[1], 10) : 0;
     const leatherQty = leatherMatch ? parseInt(leatherMatch[1], 10) : 0;
     const manaQty = manaMatch ? parseInt(manaMatch[1], 10) : 0;
+    const stickQty = stickMatch ? parseInt(stickMatch[1], 10) : 0;
+    const stoneQty = stoneMatch ? parseInt(stoneMatch[1], 10) : 0;
+    const condensedQty = condensedMatch ? parseInt(condensedMatch[1], 10) : 0;
 
-    if (ironQty === 0 && leatherQty === 0 && manaQty === 0) return;
+    // Exit early if no monitored items were mentioned
+    if (ironQty === 0 && leatherQty === 0 && manaQty === 0 && stickQty === 0 && stoneQty === 0 && condensedQty === 0) return;
 
     try {
         await doc.loadInfo();
@@ -77,46 +84,57 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
+        // Pull old values (exactly matching headers on Row 2 of your sheet)
         const currentIron = parseInt(totalRow.get('Iron')) || 0;
         const currentLeather = parseInt(totalRow.get('Leather')) || 0;
         const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
+        const currentStick = parseInt(totalRow.get('Stick')) || 0;
+        const currentStone = parseInt(totalRow.get('Stone')) || 0;
+        const currentCondensed = parseInt(totalRow.get('Condensed Crystals')) || 0;
 
-        // Math handles addition/subtraction naturally (e.g., 45 + (-2) = 43)
+        // Calculate running totals
         const newIron = currentIron + ironQty;
         const newLeather = currentLeather + leatherQty;
         const newMana = currentMana + manaQty;
+        const newStick = currentStick + stickQty;
+        const newStone = currentStone + stoneQty;
+        const newCondensed = currentCondensed + condensedQty;
 
-        // Save totals back as strings
+        // Save updated data back to columns
         totalRow.set('Iron', String(newIron));
         totalRow.set('Leather', String(newLeather));
         totalRow.set('Mana Crystals', String(newMana));
+        totalRow.set('Stick', String(newStick));
+        totalRow.set('Stone', String(newStone));
+        totalRow.set('Condensed Crystals', String(newCondensed));
         
         await totalRow.save();
 
-        console.log(`📦 Updated RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana Crystals`);
+        console.log(`📦 Updated RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana | ${stickQty} Stick | ${stoneQty} Stone | ${condensedQty} Condensed`);
         
-        // React with a custom emoji depending on whether it's an overall deposit or withdrawal
-        if (ironQty < 0 || leatherQty < 0 || manaQty < 0) {
-            await message.react('🛠️'); // Tools emoji for spending/crafting
+        // Dynamic reaction based on total action type
+        if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
+            await message.react('🛠️'); 
         } else {
-            await message.react('📦'); // Box emoji for depositing
+            await message.react('📦'); 
         }
 
         // ANNOUNCEMENT LOGIC
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
-            // Helper function to format the string cleanly based on positive or negative change
-            const formatLine = (qty, label, currentTotal) => {
+            const formatLine = (qty, label, currentTotal, emoji) => {
                 if (qty === 0) return '';
-                const emoji = label === 'Iron' ? '🟥' : label === 'Leather' ? '🟫' : '🟦';
-                const actionSign = qty > 0 ? `+${qty}` : `${qty}`; // - sign is automatically included for negative numbers
+                const actionSign = qty > 0 ? `+${qty}` : `${qty}`;
                 return `• ${emoji} **${label}:** ${actionSign} *(Total: ${currentTotal})*\n`;
             };
 
             let summary = `### 📑 Resource Log Update by ${message.author}\n`;
-            summary += formatLine(ironQty, 'Iron', newIron);
-            summary += formatLine(leatherQty, 'Leather', newLeather);
-            summary += formatLine(manaQty, 'Mana Crystals', newMana);
+            summary += formatLine(ironQty, 'Iron', newIron, '🟥');
+            summary += formatLine(leatherQty, 'Leather', newLeather, '🟫');
+            summary += formatLine(manaQty, 'Mana Crystals', newMana, '🟦');
+            summary += formatLine(stickQty, 'Stick', newStick, '🪵');
+            summary += formatLine(stoneQty, 'Stone', newStone, '🪨');
+            summary += formatLine(condensedQty, 'Condensed Crystals', newCondensed, '🔮');
 
             await announceChannel.send(summary);
         } else {
