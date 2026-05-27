@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Username Column Split Shift Tracker ONLINE as ${c.user.tag}`);
+  console.log(`✅ Production Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -74,11 +74,9 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Pull full cache window matrix
         await sheet.loadCells('A1:L70'); 
 
-        // 1. TOP TOTALS ROW ALIGNMENT MAP (Row 3, Index 2)
-        // D=3, E=4, F=5, G=6, H=7, I=8
+        // 1. Top Totals Table Row Mapping (Row 3, Index 2)
         const globalCells = {
             'Iron': sheet.getCell(2, 3),              // Column D
             'Leather': sheet.getCell(2, 4),           // Column E
@@ -88,10 +86,10 @@ client.on(Events.MessageCreate, async (message) => {
             'Condensed Crystals': sheet.getCell(2, 8) // Column I
         };
 
-        // 2. SCAN COLUMN C (Index 2) to find the Player Username
+        // 2. Locate User Row (Column C, Index 2)
         let playerRowIndex = -1;
         for (let r = 7; r < 70; r++) { 
-            const cellValue = sheet.getCell(r, 2).value; // Index 2 is Column C
+            const cellValue = sheet.getCell(r, 2).value; 
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -104,8 +102,7 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // 3. BOTTOM PLAYER ROW ALIGNMENT MAP
-        // D=3, E=4, F=5, G=6, H=7, I=8
+        // 3. Player Row Mapping
         const playerCells = {
             'Iron': sheet.getCell(playerRowIndex, 3),              // Column D
             'Leather': sheet.getCell(playerRowIndex, 4),           // Column E
@@ -124,28 +121,30 @@ client.on(Events.MessageCreate, async (message) => {
             { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
         ];
 
-        // 4. Update the cells cleanly
+        let isNegativeUpdate = false;
+
+        // 4. Update the values
         resources.forEach(item => {
             if (item.qty === 0) return;
+            if (item.qty < 0) isNegativeUpdate = true;
 
-            // Global Totals Layer
             const globalCurrent = parseInt(globalCells[item.key].value) || 0;
             globalCells[item.key].value = globalCurrent + item.qty;
 
-            // Player Matrix Layer
             const playerCurrent = parseInt(playerCells[item.key].value) || 0;
             playerCells[item.key].value = playerCurrent + item.qty;
         });
 
         await sheet.saveUpdatedCells();
 
-        if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
+        // Single clean response path
+        if (isNegativeUpdate) {
             await message.react('🛠️'); 
         } else {
             await message.react('📦'); 
         }
 
-        // Announcement Log output
+        // Announcement Log
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
@@ -160,7 +159,12 @@ client.on(Events.MessageCreate, async (message) => {
 
     } catch (err) {
         console.error("Error updating sheet:", err);
-        await message.react('⚠️');
+        // Only error react if the try block fails completely
+        try {
+            await message.react('⚠️');
+        } catch (reactErr) {
+            console.error("Failed to apply error reaction:", reactErr);
+        }
     }
 });
 
