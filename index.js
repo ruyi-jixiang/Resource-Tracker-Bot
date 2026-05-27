@@ -74,10 +74,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Load a slightly larger cell range to safely encompass rows down the player grid
+        // Load spreadsheet cell range (Columns B through I)
         await sheet.loadCells('B2:I60'); 
 
-        // 1. Target Global "Amount Stored" cells directly by precise A1 coordinates
+        // 1. Map Global "Amount Stored" cells (Row 3, Columns C to H)
         const globalCells = {
             'Iron': sheet.getCellByA1('C3'),
             'Leather': sheet.getCellByA1('D3'),
@@ -87,10 +87,10 @@ client.on(Events.MessageCreate, async (message) => {
             'Condensed Crystals': sheet.getCellByA1('H3')
         };
 
-        // 2. Scan Column B (Rows 8 through 60) to isolate your player's row coordinate
+        // 2. Scan Column B (Rows 8 through 60) to find the player's row coordinate
         let playerRowIndex = -1;
         for (let r = 7; r < 60; r++) { 
-            const cellValue = sheet.getCell(r, 1).value; // Column B is zero-indexed as index 1
+            const cellValue = sheet.getCell(r, 1).value; // Column B is index 1
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -103,17 +103,17 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // 3. Map the player's specific row cells directly to columns C through H
+        // 3. Map Player Cells with the offset accounted for (Columns D to I)
+        // Column D = Index 3, Column E = Index 4, etc.
         const playerCells = {
-            'Iron': sheet.getCell(playerRowIndex, 2),              // Column C
-            'Leather': sheet.getCell(playerRowIndex, 3),           // Column D
-            'Mana Crystals': sheet.getCell(playerRowIndex, 4),     // Column E
-            'Stick': sheet.getCell(playerRowIndex, 5),             // Column F
-            'Stone': sheet.getCell(playerRowIndex, 6),             // Column G
-            'Condensed Crystals': sheet.getCell(playerRowIndex, 7) // Column H
+            'Iron': sheet.getCell(playerRowIndex, 3),              // Column D
+            'Leather': sheet.getCell(playerRowIndex, 4),           // Column E
+            'Mana Crystals': sheet.getCell(playerRowIndex, 5),     // Column F
+            'Stick': sheet.getCell(playerRowIndex, 6),             // Column G
+            'Stone': sheet.getCell(playerRowIndex, 7),             // Column H
+            'Condensed Crystals': sheet.getCell(playerRowIndex, 8) // Column I
         };
 
-        // FIX: Realigned structural arrays and resolved the duplicated key typo
         const resources = [
             { key: 'Iron', qty: ironQty, emoji: '🟥' },
             { key: 'Leather', qty: leatherQty, emoji: '🟫' },
@@ -123,20 +123,19 @@ client.on(Events.MessageCreate, async (message) => {
             { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
         ];
 
-        // 4. Calculate and apply updates to both target locations
+        // 4. Apply updates
         resources.forEach(item => {
             if (item.qty === 0) return;
 
-            // Update Global Total Cell
+            // Update Master Pool
             const globalCurrent = parseInt(globalCells[item.key].value) || 0;
             globalCells[item.key].value = globalCurrent + item.qty;
 
-            // Update Individual Player Grid Cell
+            // Update Player Row
             const playerCurrent = parseInt(playerCells[item.key].value) || 0;
             playerCells[item.key].value = playerCurrent + item.qty;
         });
 
-        // Batch save updates to Google API
         await sheet.saveUpdatedCells();
 
         if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
@@ -145,7 +144,7 @@ client.on(Events.MessageCreate, async (message) => {
             await message.react('📦'); 
         }
 
-        // Post announcement breakdown log
+        // Announcement Log
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
