@@ -2,9 +2,9 @@ const { Client, GatewayIntentBits, Events } = require('discord.js');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
-const RESOURCE_CHANNEL_ID = '1504290958530052340'; 
-const ANNOUNCEMENT_CHANNEL_ID = '1502882358817325126'; 
-const SPREADSHEET_ID = '1tbSxj3YEPG1tRQdr8r03nJ1_Q8EEzKbEDaMBNkb3DEM';
+const RESOURCE_CHANNEL_ID = '1507988343281942618'; 
+const ANNOUNCEMENT_CHANNEL_ID = '1507588311374495834'; 
+const SPREADSHEET_ID = '1gX6WECCSj0D_QJY0j06BFT6RMYVCrgG1-VUgw9fIVCE';
 // ------------------------------
 
 const creds = process.env.GOOGLE_CREDS 
