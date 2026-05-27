@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Fixed Total & Player Tracker ONLINE as ${c.user.tag}`);
+  console.log(`✅ Fixed Grid Alignment Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -74,23 +74,23 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Load complete working area grid boundary
-        await sheet.loadCells('A1:L60'); 
+        // Pull full cell region matrix
+        await sheet.loadCells('A1:L70'); 
 
-        // 1. Map Global Totals using absolute index coordinates:
-        // Row 3 (Index 2). Columns are: C=2, D=3, E=4, F=5, G=6, H=7
+        // 1. TOP TOTALS ROW ALIGNMENT CORRECTION
+        // Row 3 (Index 2). D=3, E=4, F=5, G=6, H=7, I=8
         const globalCells = {
-            'Iron': sheet.getCell(2, 2),
-            'Leather': sheet.getCell(2, 3),
-            'Mana Crystals': sheet.getCell(2, 4),
-            'Stick': sheet.getCell(2, 5),
-            'Stone': sheet.getCell(2, 6),
-            'Condensed Crystals': sheet.getCell(2, 7)
+            'Iron': sheet.getCell(2, 3),              // Column D
+            'Leather': sheet.getCell(2, 4),           // Column E
+            'Mana Crystals': sheet.getCell(2, 5),     // Column F
+            'Stick': sheet.getCell(2, 6),             // Column G
+            'Stone': sheet.getCell(2, 7),             // Column H
+            'Condensed Crystals': sheet.getCell(2, 8) // Column I
         };
 
-        // 2. Scan Column B (Index 1) to locate the unique player row index
+        // 2. Locate the Player row in column B (Index 1)
         let playerRowIndex = -1;
-        for (let r = 7; r < 60; r++) { 
+        for (let r = 7; r < 70; r++) { 
             const cellValue = sheet.getCell(r, 1).value; 
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
@@ -104,15 +104,15 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // 3. Map Player Specific Cells:
-        // Columns are: D=3, E=4, F=5, G=6, H=7, I=8
+        // 3. BOTTOM PLAYER ROW ALIGNMENT CORRECTION
+        // Columns: D=3, E=4, F=5, G=6, H=7, I=8
         const playerCells = {
-            'Iron': sheet.getCell(playerRowIndex, 3),
-            'Leather': sheet.getCell(playerRowIndex, 4),
-            'Mana Crystals': sheet.getCell(playerRowIndex, 5),
-            'Stick': sheet.getCell(playerRowIndex, 6),
-            'Stone': sheet.getCell(playerRowIndex, 7),
-            'Condensed Crystals': sheet.getCell(playerRowIndex, 8)
+            'Iron': sheet.getCell(playerRowIndex, 3),              // Column D
+            'Leather': sheet.getCell(playerRowIndex, 4),           // Column E
+            'Mana Crystals': sheet.getCell(playerRowIndex, 5),     // Column F
+            'Stick': sheet.getCell(playerRowIndex, 6),             // Column G
+            'Stone': sheet.getCell(playerRowIndex, 7),             // Column H
+            'Condensed Crystals': sheet.getCell(playerRowIndex, 8) // Column I
         };
 
         const resources = [
@@ -124,20 +124,19 @@ client.on(Events.MessageCreate, async (message) => {
             { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
         ];
 
-        // 4. Update the numerical values on both layers
+        // 4. Update the cells cleanly
         resources.forEach(item => {
             if (item.qty === 0) return;
 
-            // Process Total pool updates
+            // Global Totals Layer
             const globalCurrent = parseInt(globalCells[item.key].value) || 0;
             globalCells[item.key].value = globalCurrent + item.qty;
 
-            // Process Individual profile updates
+            // Player Matrix Layer
             const playerCurrent = parseInt(playerCells[item.key].value) || 0;
             playerCells[item.key].value = playerCurrent + item.qty;
         });
 
-        // Push updates to Google Sheets API
         await sheet.saveUpdatedCells();
 
         if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
@@ -146,7 +145,7 @@ client.on(Events.MessageCreate, async (message) => {
             await message.react('📦'); 
         }
 
-        // Send the announcement log confirmation
+        // Announcement Log output
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
