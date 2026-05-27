@@ -25,31 +25,28 @@ const client = new Client({
     GatewayIntentBits.Guilds, 
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers // REQUIRED: Ensure this intent is toggled on your Discord Developer Dashboard
+    GatewayIntentBits.GuildMembers 
   ]
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Multi-Row Resource Tracker Bot ONLINE as ${c.user.tag}`);
+  console.log(`✅ Multi-Row Fixed Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     if (message.channel.id !== RESOURCE_CHANNEL_ID) return;
 
-    // 1. EXTRACT ROBLOX USERNAME FROM DISCORD SERVER NICKNAME
-    // Grabs everything after the "|" character and trims excess spaces
     const displayName = message.member ? message.member.displayName : '';
     if (!displayName.includes('|')) {
-        console.log(`⚠️ ${message.author.tag} does not have a '|' in their server nickname. Skipping track.`);
+        console.log(`⚠️ ${message.author.tag} does not have a '|' in their server nickname.`);
         await message.react('⚠️');
         return;
     }
-    const robloxUsername = displayName.split('|')[1].trim();
+    const robloxUsername = displayName.split('|')[1].trim().toLowerCase();
 
     const content = message.content.toLowerCase();
 
-    // Regex parsing to capture material amounts
     const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
@@ -71,79 +68,97 @@ client.on(Events.MessageCreate, async (message) => {
         const sheet = doc.sheetsByTitle["RESOURCES"]; 
 
         if (!sheet) {
-            console.error("❌ Could not find a tab named 'RESOURCES' on this spreadsheet.");
+            console.error("❌ Tab 'RESOURCES' not found.");
             await message.react('⚠️');
             return;
         }
 
-        // Based on your layout, row 2 is the master header row
-        await sheet.loadHeaderRow(2);
-        const rows = await sheet.getRows();
+        // Read raw cells directly using sheet bounds to bypass complex headers safely
+        await sheet.loadCells('B2:I40'); 
 
-        const totalRow = rows.find(row => row.get('Resource Type') === 'Amount Stored');
-        
-        const playerRow = rows.find(row => {
-            const cellValue = row.get('Players');
-            return cellValue && cellValue.trim().toLowerCase() === robloxUsername.toLowerCase();
-        });
+        // 1. Target the Global "Amount Stored" cells directly by coordinate
+        // B3 is 'Amount Stored' label, columns C through H are your total amounts.
+        const globalCells = {
+            'Iron': sheet.getCellByA1('C3'),
+            'Leather': sheet.getCellByA1('D3'),
+            'Mana Crystals': sheet.getCellByA1('E3'),
+            'Stick': sheet.getCellByA1('F3'),
+            'Stone': sheet.getCellByA1('G3'),
+            'Condensed Crystals': sheet.getCellByA1('H3')
+        };
 
-        if (!playerRow) {
-            console.error(`❌ Could not find a row for player: "${robloxUsername}" in the sheet.`);
-            await message.react('❓'); // Question mark emoji means player row missing
+        // 2. Loop through Column B (Rows 8 to 40) to find the player row
+        let playerRowIndex = -1;
+        for (let r = 7; r < 40; r++) { 
+            const cellValue = sheet.getCell(r, 1).value; // Column B is index 1
+            if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
+                playerRowIndex = r;
+                break;
+            }
+        }
+
+        if (playerRowIndex === -1) {
+            console.error(`❌ Could not locate row for username: "${robloxUsername}"`);
+            await message.react('❓'); 
             return;
         }
+
+        // 3. Map the player's specific row cells
+        const playerCells = {
+            'Iron': sheet.getCell(playerRowIndex, 2),              // Column C
+            'Leather': sheet.getCell(playerRowIndex, 3),           // Column D
+            'Mana Crystals': sheet.getCell(playerRowIndex, 4),     // Column E
+            'Stick': sheet.getCell(playerRowIndex, 5),             // Column F
+            'Stone': sheet.getCell(playerRowIndex, 6),             // Column G
+            'Condensed Crystals': sheet.getCell(playerRowIndex, 7) // Column H
+        };
 
         const resources = [
             { key: 'Iron', qty: ironQty, emoji: '🟥' },
             { key: 'Leather', qty: leatherQty, emoji: '🟫' },
-            { key: 'Mana Crystals', qty: manaMatch ? manaQty : 0, emoji: '🟦' },
+            { key: 'Mana Crystals', qty: manaQty, emoji: '🟦' },
             { key: 'Stick', qty: stickQty, emoji: '🪵' },
-            { key: 'Stone', qty: stoneQty, emoji: '🪨' },
-            { key: 'Condensed Crystals', qty: condensedMatch ? condensedQty : 0, emoji: '🔮' }
+            { key: 'Stone', stoneQty, qty: stoneQty, emoji: '🪨' },
+            { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
         ];
 
-        // 3. EXECUTE CALCULATION AND UPDATE CELL VALUES FOR BOTH ROWS
+        // 4. Update values cleanly
         resources.forEach(item => {
             if (item.qty === 0) return;
 
             // Update Master Pool
-            if (totalRow) {
-                const globalCurrent = parseInt(totalRow.get(item.key)) || 0;
-                totalRow.set(item.key, String(globalCurrent + item.qty));
-            }
+            const globalCurrent = parseInt(globalCells[item.key].value) || 0;
+            globalCells[item.key].value = globalCurrent + item.qty;
 
-            // Update Player Pool
-            const playerCurrent = parseInt(playerRow.get(item.key)) || 0;
-            playerRow.set(item.key, String(playerCurrent + item.qty));
+            // Update Individual Player Row
+            const playerCurrent = parseInt(playerCells[item.key].value) || 0;
+            playerCells[item.key].value = playerCurrent + item.qty;
         });
 
-        // Save row updates back to Google API
-        if (totalRow) await totalRow.save();
-        await playerRow.save();
+        // Save sheet changes all at once
+        await sheet.saveUpdatedCells();
 
-        // Add visual channel feedback
         if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
             await message.react('🛠️'); 
         } else {
             await message.react('📦'); 
         }
 
-        // ANNOUNCEMENT SUMMARY GENERATION
+        // Send confirmation summary
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
-            let summary = `### 📑 Inventory Updated by ${message.author} (${robloxUsername})\n`;
+            let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
             resources.forEach(item => {
                 if (item.qty === 0) return;
                 const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
-                const pTotal = playerRow.get(item.key);
+                const pTotal = playerCells[item.key].value;
                 summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
             });
-
             await announceChannel.send(summary);
         }
 
     } catch (err) {
-        console.error("Error logging resources:", err);
+        console.error("Error updating sheet:", err);
         await message.react('⚠️');
     }
 });
