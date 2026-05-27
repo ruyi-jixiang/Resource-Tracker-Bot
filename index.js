@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Fixed Grid Alignment Tracker Bot ONLINE as ${c.user.tag}`);
+  console.log(`✅ Username Column Split Shift Tracker ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -74,11 +74,11 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Pull full cell region matrix
+        // Pull full cache window matrix
         await sheet.loadCells('A1:L70'); 
 
-        // 1. TOP TOTALS ROW ALIGNMENT CORRECTION
-        // Row 3 (Index 2). D=3, E=4, F=5, G=6, H=7, I=8
+        // 1. TOP TOTALS ROW ALIGNMENT MAP (Row 3, Index 2)
+        // D=3, E=4, F=5, G=6, H=7, I=8
         const globalCells = {
             'Iron': sheet.getCell(2, 3),              // Column D
             'Leather': sheet.getCell(2, 4),           // Column E
@@ -88,10 +88,10 @@ client.on(Events.MessageCreate, async (message) => {
             'Condensed Crystals': sheet.getCell(2, 8) // Column I
         };
 
-        // 2. Locate the Player row in column B (Index 1)
+        // 2. SCAN COLUMN C (Index 2) to find the Player Username
         let playerRowIndex = -1;
         for (let r = 7; r < 70; r++) { 
-            const cellValue = sheet.getCell(r, 1).value; 
+            const cellValue = sheet.getCell(r, 2).value; // Index 2 is Column C
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -104,8 +104,8 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // 3. BOTTOM PLAYER ROW ALIGNMENT CORRECTION
-        // Columns: D=3, E=4, F=5, G=6, H=7, I=8
+        // 3. BOTTOM PLAYER ROW ALIGNMENT MAP
+        // D=3, E=4, F=5, G=6, H=7, I=8
         const playerCells = {
             'Iron': sheet.getCell(playerRowIndex, 3),              // Column D
             'Leather': sheet.getCell(playerRowIndex, 4),           // Column E
