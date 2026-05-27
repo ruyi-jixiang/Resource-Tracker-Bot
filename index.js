@@ -6,6 +6,11 @@ const RESOURCE_CHANNEL_ID = '1507988343281942618';
 const SPREADSHEET_ID = '1gX6WECCSj0D_QJY0j06BFT6RMYVCrgG1-VUgw9fIVCE'; 
 const ANNOUNCEMENT_CHANNEL_ID = '1507588311374495834';
 
+const RESOURCE_CHANNEL_ID = '1504290958530052340'; 
+const ANNOUNCEMENT_CHANNEL_ID = '1502882358817325126'; 
+const SPREADSHEET_ID = '1tbSxj3YEPG1tRQdr8r03nJ1_Q8EEzKbEDaMBNkb3DEM';
+// ------------------------------
+
 const creds = process.env.GOOGLE_CREDS 
   ? JSON.parse(process.env.GOOGLE_CREDS) 
   : require('./credentials.json');
@@ -45,14 +50,15 @@ client.on(Events.MessageCreate, async (message) => {
     }
     const robloxUsername = displayName.split('|')[1].trim().toLowerCase();
 
-    const content = message.content.toLowerCase();
+    const content = message.content.toLowerCase().trim();
 
-    const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
-    const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
-    const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
-    const stickMatch = content.match(/(-?\+?\d+)\s*x?\s*stick/);
-    const stoneMatch = content.match(/(-?\+?\d+)\s*x?\s*stone/);
-    const condensedMatch = content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystal/);
+    // Word boundary standard matching constraints (\b) to isolate "stone" vs "stick" perfectly
+    const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*\biron\b/);
+    const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*\bleather\b/);
+    const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*\bmana\s*crystal\b/);
+    const stickMatch = content.match(/(-?\+?\d+)\s*x?\s*\bstick\b/);
+    const stoneMatch = content.match(/(-?\+?\d+)\s*x?\s*\bstone\b/);
+    const condensedMatch = content.match(/(-?\+?\d+)\s*x?\s*\bcondensed\s*crystal\b/);
 
     const ironQty = ironMatch ? parseInt(ironMatch[1], 10) : 0;
     const leatherQty = leatherMatch ? parseInt(leatherMatch[1], 10) : 0;
@@ -73,11 +79,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Read raw cells directly using sheet bounds to bypass complex headers safely
-        await sheet.loadCells('B2:I40'); 
+        // Expanded coordinate bounding to safely handle row loops up to row 100 if your roster grows
+        await sheet.loadCells('B2:I100'); 
 
         // 1. Target the Global "Amount Stored" cells directly by coordinate
-        // B3 is 'Amount Stored' label, columns C through H are your total amounts.
         const globalCells = {
             'Iron': sheet.getCellByA1('C3'),
             'Leather': sheet.getCellByA1('D3'),
@@ -87,9 +92,9 @@ client.on(Events.MessageCreate, async (message) => {
             'Condensed Crystals': sheet.getCellByA1('H3')
         };
 
-        // 2. Loop through Column B (Rows 8 to 40) to find the player row
+        // 2. Loop through Column B (Rows 8 to 100) to find the player row
         let playerRowIndex = -1;
-        for (let r = 7; r < 40; r++) { 
+        for (let r = 7; r < 100; r++) { 
             const cellValue = sheet.getCell(r, 1).value; // Column B is index 1
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
@@ -118,7 +123,7 @@ client.on(Events.MessageCreate, async (message) => {
             { key: 'Leather', qty: leatherQty, emoji: '🟫' },
             { key: 'Mana Crystals', qty: manaQty, emoji: '🟦' },
             { key: 'Stick', qty: stickQty, emoji: '🪵' },
-            { key: 'Stone', stoneQty, qty: stoneQty, emoji: '🪨' },
+            { key: 'Stone', qty: stoneQty, emoji: '🪨' }, // Syntax validation duplication cleared here
             { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
         ];
 
@@ -144,16 +149,21 @@ client.on(Events.MessageCreate, async (message) => {
             await message.react('📦'); 
         }
 
-        // Send confirmation summary
+        // Fetch announcement log channel directly from cache via Client channels manager
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
-            let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
+            const today = new Date();
+            const formattedDate = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+            
+            let summary = `### 📑 Inventory Updated by ${message.author} (\`${displayName.split('|')[1].trim()}\`)\n`;
             resources.forEach(item => {
                 if (item.qty === 0) return;
                 const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
                 const pTotal = playerCells[item.key].value;
-                summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
+                summary += `• ${item.emoji} **${item.key}:** \`${sign}\` *(Your Total: ${pTotal})*\n`;
             });
+            summary += `\n📅 *Logged on: ${formattedDate}*`;
+            
             await announceChannel.send(summary);
         }
 
