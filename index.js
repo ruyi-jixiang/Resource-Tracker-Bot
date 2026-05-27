@@ -24,21 +24,32 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds, 
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent 
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers // REQUIRED: Ensure this intent is toggled on your Discord Developer Dashboard
   ]
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Resources Tab Accumulator Bot ONLINE as ${c.user.tag}`);
+  console.log(`✅ Multi-Row Resource Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     if (message.channel.id !== RESOURCE_CHANNEL_ID) return;
 
+    // 1. EXTRACT ROBLOX USERNAME FROM DISCORD SERVER NICKNAME
+    // Grabs everything after the "|" character and trims excess spaces
+    const displayName = message.member ? message.member.displayName : '';
+    if (!displayName.includes('|')) {
+        console.log(`⚠️ ${message.author.tag} does not have a '|' in their server nickname. Skipping track.`);
+        await message.react('⚠️');
+        return;
+    }
+    const robloxUsername = displayName.split('|')[1].trim();
+
     const content = message.content.toLowerCase();
 
-    // Regex parsing to capture numbers for all 6 resource types
+    // Regex parsing to capture material amounts
     const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
     const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
     const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
@@ -53,12 +64,10 @@ client.on(Events.MessageCreate, async (message) => {
     const stoneQty = stoneMatch ? parseInt(stoneMatch[1], 10) : 0;
     const condensedQty = condensedMatch ? parseInt(condensedMatch[1], 10) : 0;
 
-    // Exit early if no monitored items were mentioned
     if (ironQty === 0 && leatherQty === 0 && manaQty === 0 && stickQty === 0 && stoneQty === 0 && condensedQty === 0) return;
 
     try {
         await doc.loadInfo();
-        
         const sheet = doc.sheetsByTitle["RESOURCES"]; 
 
         if (!sheet) {
@@ -67,78 +76,70 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
+        // Based on your layout, row 2 is the master header row
         await sheet.loadHeaderRow(2);
         const rows = await sheet.getRows();
 
-        let totalRow = rows.find(row => {
-            return row.get('Resource') === 'Amount';
+        const totalRow = rows.find(row => row.get('Resource Type') === 'Amount Stored');
+        
+        const playerRow = rows.find(row => {
+            const cellValue = row.get('Players');
+            return cellValue && cellValue.trim().toLowerCase() === robloxUsername.toLowerCase();
         });
 
-        if (!totalRow) {
-            totalRow = rows[0]; 
-        }
-
-        if (!totalRow) {
-            console.error("❌ Could not locate total accumulation row inside RESOURCES tab.");
-            await message.react('⚠️');
+        if (!playerRow) {
+            console.error(`❌ Could not find a row for player: "${robloxUsername}" in the sheet.`);
+            await message.react('❓'); // Question mark emoji means player row missing
             return;
         }
 
-        // Pull old values (exactly matching headers on Row 2 of your sheet)
-        const currentIron = parseInt(totalRow.get('Iron')) || 0;
-        const currentLeather = parseInt(totalRow.get('Leather')) || 0;
-        const currentMana = parseInt(totalRow.get('Mana Crystals')) || 0;
-        const currentStick = parseInt(totalRow.get('Stick')) || 0;
-        const currentStone = parseInt(totalRow.get('Stone')) || 0;
-        const currentCondensed = parseInt(totalRow.get('Condensed Crystals')) || 0;
+        const resources = [
+            { key: 'Iron', qty: ironQty, emoji: '🟥' },
+            { key: 'Leather', qty: leatherQty, emoji: '🟫' },
+            { key: 'Mana Crystals', qty: manaMatch ? manaQty : 0, emoji: '🟦' },
+            { key: 'Stick', qty: stickQty, emoji: '🪵' },
+            { key: 'Stone', qty: stoneQty, emoji: '🪨' },
+            { key: 'Condensed Crystals', qty: condensedMatch ? condensedQty : 0, emoji: '🔮' }
+        ];
 
-        // Calculate running totals
-        const newIron = currentIron + ironQty;
-        const newLeather = currentLeather + leatherQty;
-        const newMana = currentMana + manaQty;
-        const newStick = currentStick + stickQty;
-        const newStone = currentStone + stoneQty;
-        const newCondensed = currentCondensed + condensedQty;
+        // 3. EXECUTE CALCULATION AND UPDATE CELL VALUES FOR BOTH ROWS
+        resources.forEach(item => {
+            if (item.qty === 0) return;
 
-        // Save updated data back to columns
-        totalRow.set('Iron', String(newIron));
-        totalRow.set('Leather', String(newLeather));
-        totalRow.set('Mana Crystals', String(newMana));
-        totalRow.set('Stick', String(newStick));
-        totalRow.set('Stone', String(newStone));
-        totalRow.set('Condensed Crystals', String(newCondensed));
-        
-        await totalRow.save();
+            // Update Master Pool
+            if (totalRow) {
+                const globalCurrent = parseInt(totalRow.get(item.key)) || 0;
+                totalRow.set(item.key, String(globalCurrent + item.qty));
+            }
 
-        console.log(`📦 Updated RESOURCES page: ${ironQty} Iron | ${leatherQty} Leather | ${manaQty} Mana | ${stickQty} Stick | ${stoneQty} Stone | ${condensedQty} Condensed`);
-        
-        // Dynamic reaction based on total action type
+            // Update Player Pool
+            const playerCurrent = parseInt(playerRow.get(item.key)) || 0;
+            playerRow.set(item.key, String(playerCurrent + item.qty));
+        });
+
+        // Save row updates back to Google API
+        if (totalRow) await totalRow.save();
+        await playerRow.save();
+
+        // Add visual channel feedback
         if (ironQty < 0 || leatherQty < 0 || manaQty < 0 || stickQty < 0 || stoneQty < 0 || condensedQty < 0) {
             await message.react('🛠️'); 
         } else {
             await message.react('📦'); 
         }
 
-        // ANNOUNCEMENT LOGIC
+        // ANNOUNCEMENT SUMMARY GENERATION
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
-            const formatLine = (qty, label, currentTotal, emoji) => {
-                if (qty === 0) return '';
-                const actionSign = qty > 0 ? `+${qty}` : `${qty}`;
-                return `• ${emoji} **${label}:** ${actionSign} *(Total: ${currentTotal})*\n`;
-            };
-
-            let summary = `### 📑 Resource Log Update by ${message.author}\n`;
-            summary += formatLine(ironQty, 'Iron', newIron, '🟥');
-            summary += formatLine(leatherQty, 'Leather', newLeather, '🟫');
-            summary += formatLine(manaQty, 'Mana Crystals', newMana, '🟦');
-            summary += formatLine(stickQty, 'Stick', newStick, '🪵');
-            summary += formatLine(stoneQty, 'Stone', newStone, '🪨');
-            summary += formatLine(condensedQty, 'Condensed Crystals', newCondensed, '🔮');
+            let summary = `### 📑 Inventory Updated by ${message.author} (${robloxUsername})\n`;
+            resources.forEach(item => {
+                if (item.qty === 0) return;
+                const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
+                const pTotal = playerRow.get(item.key);
+                summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
+            });
 
             await announceChannel.send(summary);
-        } else {
-            console.error("❌ Announcement channel not found. Check your ANNOUNCEMENT_CHANNEL_ID.");
         }
 
     } catch (err) {
