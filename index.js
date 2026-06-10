@@ -114,10 +114,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // FIXED: Set to exactly 50 rows and 23 columns to prevent "Out of bounds" errors
         await sheet.loadCells({ startRowIndex: 0, endRowIndex: 50, startColumnIndex: 0, endColumnIndex: 23 }); 
 
         // --- DYNAMIC FUZZY HEADER COLUMNS MAP ---
+        // Reads Row 9 (Index 8 in zero-indexed API code)
         const columnMap = {};
         for (let c = 0; c < 23; c++) {
             const headerValue = sheet.getCell(8, c).value;
@@ -136,7 +136,7 @@ client.on(Events.MessageCreate, async (message) => {
                     col: columnMap[lookUpKey]
                 });
             } else {
-                console.warn(`⚠️ Mismatch warning: Could not map header items on row 9 for item: "${item.key}"`);
+                console.warn(`⚠️ Mismatch warning: Could not map header items for: "${item.key}"`);
             }
         }
 
@@ -146,9 +146,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // --- USER ROW LOCATOR ---
+        // --- FIXED USER ROW LOCATOR ---
         let playerRowIndex = -1;
-        for (let r = 9; r < 50; r++) { 
+        // Scans from Row 11 (index 10) to Row 50, checking Column B (index 1)
+        for (let r = 10; r < 50; r++) { 
             const cell = sheet.getCell(r, 1); 
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
@@ -157,7 +158,7 @@ client.on(Events.MessageCreate, async (message) => {
         }
 
         if (playerRowIndex === -1) {
-            console.error(`❌ Could not locate structural player row index for user: "${robloxUsername}"`);
+            console.error(`❌ Could not locate structural player row index for username: "${robloxUsername}"`);
             await message.react('❓'); 
             return;
         }
