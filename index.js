@@ -48,7 +48,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Updated regexes with s? to handle both singular and plural inputs smoothly
+    // Secure regex matching with clean bounds
     const matches = {
         'Charcoal': content.match(/(-?\+?\d+)\s*x?\s*charcoal/),
         'Coal Ore': content.match(/(-?\+?\d+)\s*x?\s*coal\s*ore/),
@@ -71,7 +71,6 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // Config keys match the spreadsheet column headers exactly
     const resourceConfig = [
         { key: 'Charcoal',           col: 2,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },
         { key: 'Coal Ore',           col: 3,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },
@@ -107,12 +106,13 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        await sheet.loadCells('A1:Y70'); 
+        // Expanded loading grid horizontally up to index 26 to safely process up to Column Z
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 75, startColumnIndex: 0, endColumnIndex: 26 }); 
 
         let playerRowIndex = -1;
-        for (let r = 7; r < 70; r++) { 
-            const cellValue = sheet.getCell(r, 1).value;
-            if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
+        for (let r = 7; r < 75; r++) { 
+            const cell = sheet.getCell(r, 1);
+            if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
             }
@@ -131,12 +131,12 @@ client.on(Events.MessageCreate, async (message) => {
 
             // Global Totals (Row 3, Index 2)
             const globalCell = sheet.getCell(2, item.col);
-            const globalCurrent = parseInt(globalCell.value, 10) || 0;
+            const globalCurrent = parseInt(globalCell.value, 10) || 0; // Safely fallbacks to 0 if cell is blank
             globalCell.value = globalCurrent + item.qty;
 
             // Player Specific Row Update
             const playerCell = sheet.getCell(playerRowIndex, item.col);
-            const playerCurrent = parseInt(playerCell.value, 10) || 0;
+            const playerCurrent = parseInt(playerCell.value, 10) || 0; // Safely fallbacks to 0 if cell is blank
             playerCell.value = playerCurrent + item.qty;
         });
 
