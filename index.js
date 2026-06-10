@@ -114,12 +114,12 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 50, startColumnIndex: 0, endColumnIndex: 23 }); 
+        // Increased endColumnIndex to 25 to safely account for the hidden first column spacer
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 50, startColumnIndex: 0, endColumnIndex: 25 }); 
 
         // --- DYNAMIC FUZZY HEADER COLUMNS MAP ---
-        // Reads Row 9 (Index 8 in zero-indexed API code)
         const columnMap = {};
-        for (let c = 0; c < 23; c++) {
+        for (let c = 0; c < 25; c++) {
             const headerValue = sheet.getCell(8, c).value;
             if (headerValue) {
                 const cleanedHeader = cleanKey(headerValue);
@@ -148,9 +148,9 @@ client.on(Events.MessageCreate, async (message) => {
 
         // --- FIXED USER ROW LOCATOR ---
         let playerRowIndex = -1;
-        // Scans from Row 11 (index 10) to Row 50, checking Column B (index 1)
+        // Checking Column index 2 (Visual Column B: "Player Username")
         for (let r = 10; r < 50; r++) { 
-            const cell = sheet.getCell(r, 1); 
+            const cell = sheet.getCell(r, 2); 
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
