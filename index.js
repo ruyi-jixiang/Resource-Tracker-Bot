@@ -48,21 +48,55 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    const ironMatch = content.match(/(-?\+?\d+)\s*x?\s*iron/);
-    const leatherMatch = content.match(/(-?\+?\d+)\s*x?\s*leather/);
-    const manaMatch = content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/);
-    const stickMatch = content.match(/(-?\+?\d+)\s*x?\s*stick/);
-    const stoneMatch = content.match(/(-?\+?\d+)\s*x?\s*stone/);
-    const condensedMatch = content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystal/);
+    // Comprehensive regex matches for ALL resource types in the layout
+    const matches = {
+        'Charcoal': content.match(/(-?\+?\d+)\s*x?\s*charcoal/),
+        'Coal Ore': content.match(/(-?\+?\d+)\s*x?\s*coal\s*ore/),
+        'Condensed Crystals': content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystal/),
+        'Copper Ingots': content.match(/(-?\+?\d+)\s*x?\s*copper\s*ingot/),
+        'Copper Ore': content.match(/(-?\+?\d+)\s*x?\s*copper\s*ore/),
+        'Gel': content.match(/(-?\+?\d+)\s*x?\s*gel/),
+        'Glass': content.match(/(-?\+?\d+)\s*x?\s*glass/),
+        'Gold Ingots': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ingot/),
+        'Gold Ore': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ore/),
+        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*ingot)/), // ignores 'iron ingot'
+        'Iron Ingots': content.match(/(-?\+?\d+)\s*x?\s*iron\s*ingot/),
+        'Leather': content.match(/(-?\+?\d+)\s*x?\s*leather/),
+        'Logs': content.match(/(-?\+?\d+)\s*x?\s*log/),
+        'Mana Crystals': content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/),
+        'Sandstone': content.match(/(-?\+?\d+)\s*x?\s*sandstone/),
+        'Silver Ingots': content.match(/(-?\+?\d+)\s*x?\s*silver\s*ingot/),
+        'Silver Ore': content.match(/(-?\+?\d+)\s*x?\s*silver\s*ore/),
+        'Sticks': content.match(/(-?\+?\d+)\s*x?\s*stick/),
+        'Stones': content.match(/(-?\+?\d+)\s*x?\s*stone/)
+    };
 
-    const ironQty = ironMatch ? parseInt(ironMatch[1], 10) : 0;
-    const leatherQty = leatherMatch ? parseInt(leatherMatch[1], 10) : 0;
-    const manaQty = manaMatch ? parseInt(manaMatch[1], 10) : 0;
-    const stickQty = stickMatch ? parseInt(stickMatch[1], 10) : 0;
-    const stoneQty = stoneMatch ? parseInt(stoneMatch[1], 10) : 0;
-    const condensedQty = condensedMatch ? parseInt(condensedMatch[1], 10) : 0;
+    // Construct unified dynamic configuration array 
+    const resourceConfig = [
+        { key: 'Charcoal',           col: 2,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },
+        { key: 'Coal Ore',           col: 3,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },
+        { key: 'Condensed Crystals', col: 4,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 },
+        { key: 'Copper Ingots',      col: 5,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },
+        { key: 'Copper Ore',         col: 6,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },
+        { key: 'Gel',                col: 7,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },
+        { key: 'Glass',              col: 8,  emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },
+        { key: 'Gold Ingots',        col: 9,  emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },
+        { key: 'Gold Ore',           col: 10, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },
+        { key: 'Iron',               col: 11, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },
+        { key: 'Iron Ingots',        col: 12, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },
+        { key: 'Leather',            col: 13, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },
+        { key: 'Logs',               col: 14, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },
+        { key: 'Mana Crystals',      col: 15, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 },
+        { key: 'Sandstone',          col: 16, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },
+        { key: 'Silver Ingots',      col: 17, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 },
+        { key: 'Silver Ore',         col: 18, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },
+        { key: 'Sticks',             col: 19, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },
+        { key: 'Stones',             col: 20, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }
+    ];
 
-    if (ironQty === 0 && leatherQty === 0 && manaQty === 0 && stickQty === 0 && stoneQty === 0 && condensedQty === 0) return;
+    // Filter out items that have no alterations in the message
+    const activeUpdates = resourceConfig.filter(item => item.qty !== 0);
+    if (activeUpdates.length === 0) return;
 
     try {
         await doc.loadInfo();
@@ -74,22 +108,13 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        await sheet.loadCells('A1:L70'); 
+        // Expanded bounds to cover up to index 20 (Column U/V/W areas) safely
+        await sheet.loadCells('A1:Y70'); 
 
-        // 1. Top Totals Table Row Mapping (Row 3, Index 2)
-        const globalCells = {
-            'Iron': sheet.getCell(2, 3),              // Column D
-            'Leather': sheet.getCell(2, 4),           // Column E
-            'Mana Crystals': sheet.getCell(2, 5),     // Column F
-            'Stick': sheet.getCell(2, 6),             // Column G
-            'Stone': sheet.getCell(2, 7),             // Column H
-            'Condensed Crystals': sheet.getCell(2, 8) // Column I
-        };
-
-        // 2. Locate User Row (Column C, Index 2)
+        // 1. Locate User Row (Column B, Index 1)
         let playerRowIndex = -1;
         for (let r = 7; r < 70; r++) { 
-            const cellValue = sheet.getCell(r, 2).value; 
+            const cellValue = sheet.getCellValue ? sheet.getCell(r, 1).value : sheet.getCell(r, 1).value;
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -102,56 +127,39 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // 3. Player Row Mapping
-        const playerCells = {
-            'Iron': sheet.getCell(playerRowIndex, 3),              // Column D
-            'Leather': sheet.getCell(playerRowIndex, 4),           // Column E
-            'Mana Crystals': sheet.getCell(playerRowIndex, 5),     // Column F
-            'Stick': sheet.getCell(playerRowIndex, 6),             // Column G
-            'Stone': sheet.getCell(playerRowIndex, 7),             // Column H
-            'Condensed Crystals': sheet.getCell(playerRowIndex, 8) // Column I
-        };
-
-        const resources = [
-            { key: 'Iron', qty: ironQty, emoji: '🟥' },
-            { key: 'Leather', qty: leatherQty, emoji: '🟫' },
-            { key: 'Mana Crystals', qty: manaQty, emoji: '🟦' },
-            { key: 'Stick', qty: stickQty, emoji: '🪵' },
-            { key: 'Stone', qty: stoneQty, emoji: '🪨' },
-            { key: 'Condensed Crystals', qty: condensedQty, emoji: '🔮' }
-        ];
-
         let isNegativeUpdate = false;
 
-        // 4. Update the values
-        resources.forEach(item => {
-            if (item.qty === 0) return;
+        // 2. Dynamic spreadsheet manipulation loop
+        activeUpdates.forEach(item => {
             if (item.qty < 0) isNegativeUpdate = true;
 
-            const globalCurrent = parseInt(globalCells[item.key].value) || 0;
-            globalCells[item.key].value = globalCurrent + item.qty;
+            // Global Totals updates (Row 3, Index 2)
+            const globalCell = sheet.getCell(2, item.col);
+            const globalCurrent = parseInt(globalCell.value, 10) || 0;
+            globalCell.value = globalCurrent + item.qty;
 
-            const playerCurrent = parseInt(playerCells[item.key].value) || 0;
-            playerCells[item.key].value = playerCurrent + item.qty;
+            // Player specific row updates
+            const playerCell = sheet.getCell(playerRowIndex, item.col);
+            const playerCurrent = parseInt(playerCell.value, 10) || 0;
+            playerCell.value = playerCurrent + item.qty;
         });
 
         await sheet.saveUpdatedCells();
 
-        // Single clean response path
+        // Single clean reaction feedback
         if (isNegativeUpdate) {
             await message.react('🛠️'); 
         } else {
             await message.react('📦'); 
         }
 
-        // Announcement Log
+        // Announcement logger channel output
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
-            resources.forEach(item => {
-                if (item.qty === 0) return;
+            activeUpdates.forEach(item => {
                 const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
-                const pTotal = playerCells[item.key].value;
+                const pTotal = sheet.getCell(playerRowIndex, item.col).value;
                 summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
             });
             await announceChannel.send(summary);
@@ -159,7 +167,6 @@ client.on(Events.MessageCreate, async (message) => {
 
     } catch (err) {
         console.error("Error updating sheet:", err);
-        // Only error react if the try block fails completely
         try {
             await message.react('⚠️');
         } catch (reactErr) {
