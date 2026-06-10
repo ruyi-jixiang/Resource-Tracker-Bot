@@ -1,30 +1,3 @@
-The new error trace makes the problem crystal clear:
-
-Mismatch warning: Could not map header items for: "Silver Ingots"
-
-Because we are dynamically scanning Row 9 to find the items, your sheet contains sub-headers, merged cells, or font stylings on that row that google-spreadsheet is reading as empty values (null). Since it didn't map the column position for "Silver Ingots", it skipped it, leaving finalizedUpdates empty, which triggers the ❓ emoji safety stop.
-
-Instead of trying to dynamically scan a row that has complex formatting, we should go back to a hardcoded column layout where we assign the columns exactly as they appear visually on your spreadsheet.
-
-Looking at your sheet, the very first data column (Lore Name) is Column A. If we treat Column A as index 0, the resource tracking layout aligns precisely like this:
-
-Exact Column Blueprint (A = 0)
-Column A (Index 0): Lore Name
-
-Column B (Index 1): Player Username (dam_ages)
-
-Column C (Index 2): Total Weight
-
-Column D (Index 3): Charcoal ⬛
-
-Column E (Index 4): Coal Ore 🪨
-
-... and so on, with Silver Ingots at Column S (Index 18).
-
-The script below removes the header scanning logic entirely, processes the static math cleanly, and handles your exact layout dimensions (50 rows by 23 columns) perfectly.
-
-The Final Fixed Script
-JavaScript
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
@@ -97,7 +70,7 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // HARDCODED FIX: Absolute mapping based on Column A = 0, Column B = 1, etc.
+    // Absolute indices mapping: Column A = 0, Column B = 1, Column C = 2, Column D = 3...
     const resourceConfig = [
         { key: 'Charcoal',           col: 3,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // D
         { key: 'Coal Ore',           col: 4,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // E
@@ -133,13 +106,21 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Bound exactly to the sheet limits (50 rows, 23 columns) to stop index crashes
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 50, startColumnIndex: 0, endColumnIndex: 23 }); 
+        // DYNAMIC FIX: Automatically lock onto the absolute limits of the sheet sizes to completely avoid out-of-bounds panics
+        const maxRows = sheet.rowCount;
+        const maxCols = sheet.columnCount;
+
+        await sheet.loadCells({ 
+            startRowIndex: 0, 
+            endRowIndex: maxRows, 
+            startColumnIndex: 0, 
+            endColumnIndex: maxCols 
+        }); 
 
         // --- USER ROW LOCATOR ---
         let playerRowIndex = -1;
         // Check Column B (index 1) for your player username entry
-        for (let r = 10; r < 50; r++) { 
+        for (let r = 10; r < maxRows; r++) { 
             const cell = sheet.getCell(r, 1); 
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
@@ -155,7 +136,21 @@ client.on(Events.MessageCreate, async (message) => {
 
         let isNegativeUpdate = false;
 
-        activeUpdates.forEach(item => {
+        // Verify the tracked columns fit inside the sheet width before making changes
+        const safeUpdates = activeUpdates.filter(item => {
+            if (item.col >= maxCols) {
+                console.error(`⚠️ Configuration error: Column index ${item.col} for ${item.key} is out of sheet boundaries (Max: ${maxCols - 1}). Skipping.`);
+                return false;
+            }
+            return true;
+        });
+
+        if (safeUpdates.length === 0) {
+            await message.react('⚠️');
+            return;
+        }
+
+        safeUpdates.forEach(item => {
             if (item.qty < 0) isNegativeUpdate = true;
 
             // Global Amount Stored Totals updates on Row 3 (Index 2)
@@ -180,7 +175,7 @@ client.on(Events.MessageCreate, async (message) => {
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
-            activeUpdates.forEach(item => {
+            safeUpdates.forEach(item => {
                 const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
                 const pTotal = sheet.getCell(playerRowIndex, item.col).value || 0;
                 summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
