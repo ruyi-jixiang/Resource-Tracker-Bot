@@ -70,7 +70,7 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // REALIGNED: Charcoal begins strictly on Column D (Index 3). Everything else cascades back by 1.
+    // Verified mappings strictly adhering to Column letters (A=0, B=1, C=2, D=3...)
     const resourceConfig = [
         { key: 'Charcoal',           col: 3,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // D
         { key: 'Coal Ore',           col: 4,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // E
@@ -99,7 +99,6 @@ client.on(Events.MessageCreate, async (message) => {
     try {
         await doc.loadInfo();
         
-        // Target the 3rd sheet tab dynamically using 0-based index
         const sheet = doc.sheetsByIndex[2]; 
 
         if (!sheet) {
@@ -108,11 +107,11 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Fetch grid boundaries up to column Z safely
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 85, startColumnIndex: 0, endColumnIndex: 26 }); 
+        // FIXED: Expanded endColumnIndex to 30 to prevent array index out-of-bounds errors when reading width
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 100, startColumnIndex: 0, endColumnIndex: 30 }); 
 
         let playerRowIndex = -1;
-        for (let r = 7; r < 85; r++) { 
+        for (let r = 7; r < 100; r++) { 
             const cell = sheet.getCell(r, 1); // Check column B (index 1) for usernames
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
