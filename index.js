@@ -70,27 +70,27 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // HARDCODED CORRECTED INDEXES TO ACCOUNT FOR SKIPPED/HIDDEN COLUMNS
+    // ALL INDICES SHIFTED BY +1 TO ACCOMMODATE CHARCOAL STARTING ON COLUMN D (INDEX 3)
     const resourceConfig = [
-        { key: 'Charcoal',           col: 2,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // C
-        { key: 'Coal Ore',           col: 3,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // D
-        { key: 'Condensed Crystals', col: 4,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 }, // E
-        { key: 'Copper Ingots',      col: 5,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },   // F
-        { key: 'Copper Ore',         col: 6,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },       // G
-        { key: 'Gel',                col: 7,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },                     // H
-        { key: 'Glass',              col: 8,  emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },                 // I
-        { key: 'Gold Ingots',        col: 9,  emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },     // J
-        { key: 'Gold Ore',           col: 10, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },         // K
-        { key: 'Iron',               col: 11, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },                 // L
-        { key: 'Iron Ingots',        col: 13, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },     // N (Index 12 is skipped Column M!)
-        { key: 'Leather',            col: 14, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },           // O
-        { key: 'Logs',               col: 15, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },                 // P
-        { key: 'Mana Crystals',      col: 16, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 }, // Q
-        { key: 'Sandstone',          col: 17, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },         // R
-        { key: 'Silver Ingots',      col: 18, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 }, // S
-        { key: 'Silver Ore',         col: 19, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },     // T
-        { key: 'Sticks',             col: 20, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },             // U
-        { key: 'Stones',             col: 21, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }              // V
+        { key: 'Charcoal',           col: 3,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // D
+        { key: 'Coal Ore',           col: 4,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // E
+        { key: 'Condensed Crystals', col: 5,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 }, // F
+        { key: 'Copper Ingots',      col: 6,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },   // G
+        { key: 'Copper Ore',         col: 7,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },       // H
+        { key: 'Gel',                col: 8,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },                     // I
+        { key: 'Glass',              col: 9,  emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },                 // J
+        { key: 'Gold Ingots',        col: 10, emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },     // K
+        { key: 'Gold Ore',           col: 11, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },         // L
+        { key: 'Iron',               col: 12, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },                 // M
+        { key: 'Iron Ingots',        col: 14, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },     // O (Account for missing column N/M offset)
+        { key: 'Leather',            col: 15, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },           // P
+        { key: 'Logs',               col: 16, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },                 // Q
+        { key: 'Mana Crystals',      col: 17, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 }, // R
+        { key: 'Sandstone',          col: 18, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },         // S
+        { key: 'Silver Ingots',      col: 19, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 }, // T
+        { key: 'Silver Ore',         col: 20, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },     // U
+        { key: 'Sticks',             col: 21, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },             // V
+        { key: 'Stones',             col: 22, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }              // W
     ];
 
     const activeUpdates = resourceConfig.filter(item => item.qty !== 0);
@@ -106,8 +106,8 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Load safely past column W/X/Y
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 80, startColumnIndex: 0, endColumnIndex: 26 }); 
+        // Expanded loading boundaries safely to Column AA (Index 27)
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 80, startColumnIndex: 0, endColumnIndex: 27 }); 
 
         let playerRowIndex = -1;
         for (let r = 7; r < 80; r++) { 
@@ -134,7 +134,7 @@ client.on(Events.MessageCreate, async (message) => {
             const globalCurrent = parseInt(globalCell.value, 10) || 0;
             globalCell.value = globalCurrent + item.qty;
 
-            // Player Specific Row Update
+            // Player Row Update
             const playerCell = sheet.getCell(playerRowIndex, item.col);
             const playerCurrent = parseInt(playerCell.value, 10) || 0;
             playerCell.value = playerCurrent + item.qty;
