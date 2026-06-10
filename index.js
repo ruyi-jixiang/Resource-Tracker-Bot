@@ -156,11 +156,11 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // --- USER ROW LOCATOR ---
+        // --- USER ROW LOCATOR (FIXED) ---
         let playerRowIndex = -1;
-        // Scans Column B (Index 1) starting on Row 10 (Index 9) down to the bottom
+        // Scans Column C (Index 2) starting on Row 10 (Index 9) down to the bottom
         for (let r = 9; r < maxRows; r++) { 
-            const cell = sheet.getCell(r, 1); 
+            const cell = sheet.getCell(r, 2); // Corrected from index 1 to index 2
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
