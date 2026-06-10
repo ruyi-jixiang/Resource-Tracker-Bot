@@ -70,27 +70,27 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // SHIFTED: Charcoal maps to index 4 (Column E). All resource mappings updated sequentially.
+    // ALL INDICES SHIFTED BY +1 TO ACCOMMODATE CHARCOAL STARTING ON COLUMN D (INDEX 3)
     const resourceConfig = [
-        { key: 'Charcoal',           col: 4,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // E
-        { key: 'Coal Ore',           col: 5,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // F
-        { key: 'Condensed Crystals', col: 6,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 }, // G
-        { key: 'Copper Ingots',      col: 7,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },   // H
-        { key: 'Copper Ore',         col: 8,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },       // I
-        { key: 'Gel',                col: 9,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },                     // J
-        { key: 'Glass',              col: 10, emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },                 // K
-        { key: 'Gold Ingots',        col: 11, emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },     // L
-        { key: 'Gold Ore',           col: 12, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },         // M
-        { key: 'Iron',               col: 13, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },                 // N
-        { key: 'Iron Ingots',        col: 15, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },     // P (Accounts for layout skip)
-        { key: 'Leather',            col: 16, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },           // Q
-        { key: 'Logs',               col: 17, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },                 // R
-        { key: 'Mana Crystals',      col: 18, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 }, // S
-        { key: 'Sandstone',          col: 19, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },         // T
-        { key: 'Silver Ingots',      col: 20, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 }, // U
-        { key: 'Silver Ore',         col: 21, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },     // V
-        { key: 'Sticks',             col: 22, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },             // W
-        { key: 'Stones',             col: 23, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }              // X
+        { key: 'Charcoal',           col: 3,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // D
+        { key: 'Coal Ore',           col: 4,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // E
+        { key: 'Condensed Crystals', col: 5,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 }, // F
+        { key: 'Copper Ingots',      col: 6,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },   // G
+        { key: 'Copper Ore',         col: 7,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },       // H
+        { key: 'Gel',                col: 8,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },                     // I
+        { key: 'Glass',              col: 9,  emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },                 // J
+        { key: 'Gold Ingots',        col: 10, emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },     // K
+        { key: 'Gold Ore',           col: 11, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },         // L
+        { key: 'Iron',               col: 12, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },                 // M
+        { key: 'Iron Ingots',        col: 14, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },     // O (Account for missing column N/M offset)
+        { key: 'Leather',            col: 15, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },           // P
+        { key: 'Logs',               col: 16, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },                 // Q
+        { key: 'Mana Crystals',      col: 17, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 }, // R
+        { key: 'Sandstone',          col: 18, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },         // S
+        { key: 'Silver Ingots',      col: 19, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 }, // T
+        { key: 'Silver Ore',         col: 20, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },     // U
+        { key: 'Sticks',             col: 21, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },             // V
+        { key: 'Stones',             col: 22, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }              // W
     ];
 
     const activeUpdates = resourceConfig.filter(item => item.qty !== 0);
@@ -106,11 +106,11 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Expanded fetching range bounds up to column AD (Index 30) to cover the new shifts safely
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 85, startColumnIndex: 0, endColumnIndex: 30 }); 
+        // Expanded loading boundaries safely to Column AA (Index 27)
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 80, startColumnIndex: 0, endColumnIndex: 27 }); 
 
         let playerRowIndex = -1;
-        for (let r = 7; r < 85; r++) { 
+        for (let r = 7; r < 80; r++) { 
             const cell = sheet.getCell(r, 1);
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
