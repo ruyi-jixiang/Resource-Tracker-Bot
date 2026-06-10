@@ -34,6 +34,15 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Production Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
+function cleanKey(str) {
+    if (!str) return '';
+    let normalized = String(str).toLowerCase().trim();
+    if (normalized.endsWith('s')) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized.replace(/\s+/g, '');
+}
+
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     if (message.channel.id !== RESOURCE_CHANNEL_ID) return;
@@ -48,7 +57,6 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Clean regular expression matches handling options smoothly
     const matches = {
         'Charcoal': content.match(/(-?\+?\d+)\s*x?\s*charcoal/),
         'Coal Ore': content.match(/(-?\+?\d+)\s*x?\s*coal\s*ore/),
@@ -71,7 +79,6 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // Initial item blueprint configs
     const resourceItems = [
         { key: 'Charcoal',           emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },
         { key: 'Coal Ore',           emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },
@@ -100,7 +107,6 @@ client.on(Events.MessageCreate, async (message) => {
     try {
         await doc.loadInfo();
         
-        // Always target page 3 safely
         const sheet = doc.sheetsByIndex[2]; 
         if (!sheet) {
             console.error("❌ Tab at Index 2 could not be verified.");
@@ -108,43 +114,42 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Preload a large cell boundary block safely up to Column AF and Row 100
-        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 100, startColumnIndex: 0, endColumnIndex: 32 }); 
+        // FIXED: Set to exactly 50 rows and 23 columns to prevent "Out of bounds" errors
+        await sheet.loadCells({ startRowIndex: 0, endRowIndex: 50, startColumnIndex: 0, endColumnIndex: 23 }); 
 
-        // --- DYNAMIC HEADER COLUMNS MAP SYSTEM ---
-        // Scans row 9 (Index 8) to find out exactly where every single item header is
+        // --- DYNAMIC FUZZY HEADER COLUMNS MAP ---
         const columnMap = {};
-        for (let c = 0; c < 32; c++) {
+        for (let c = 0; c < 23; c++) {
             const headerValue = sheet.getCell(8, c).value;
             if (headerValue) {
-                const standardizedHeader = String(headerValue).trim().toLowerCase();
-                columnMap[standardizedHeader] = c;
+                const cleanedHeader = cleanKey(headerValue);
+                columnMap[cleanedHeader] = c;
             }
         }
 
-        // Map column indexes directly to active tracker updates dynamically
         const finalizedUpdates = [];
         for (const item of activeUpdates) {
-            const lookUpKey = item.key.toLowerCase();
+            const lookUpKey = cleanKey(item.key);
             if (columnMap[lookUpKey] !== undefined) {
                 finalizedUpdates.push({
                     ...item,
                     col: columnMap[lookUpKey]
                 });
             } else {
-                console.warn(`⚠️ Warning: Could not find header match on row 9 for item type: "${item.key}"`);
+                console.warn(`⚠️ Mismatch warning: Could not map header items on row 9 for item: "${item.key}"`);
             }
         }
 
         if (finalizedUpdates.length === 0) {
+            console.error("❌ None of the requested updates matched the spreadsheet columns.");
             await message.react('❓');
             return;
         }
 
-        // --- SAFE USER ROW LOCATOR ---
+        // --- USER ROW LOCATOR ---
         let playerRowIndex = -1;
-        for (let r = 9; r < 100; r++) { 
-            const cell = sheet.getCell(r, 1); // Column B holds the usernames
+        for (let r = 9; r < 50; r++) { 
+            const cell = sheet.getCell(r, 1); 
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -159,22 +164,20 @@ client.on(Events.MessageCreate, async (message) => {
 
         let isNegativeUpdate = false;
 
-        // Apply changes to the grid cell cache layer
         finalizedUpdates.forEach(item => {
             if (item.qty < 0) isNegativeUpdate = true;
 
-            // Global Totals adjustment on Row 3 (Index 2)
+            // Global Amount Stored Totals updates on Row 3 (Index 2)
             const globalCell = sheet.getCell(2, item.col);
             const globalCurrent = parseInt(globalCell.value, 10) || 0;
             globalCell.value = globalCurrent + item.qty;
 
-            // Player Specific Row adjustment
+            // Individual row modifications
             const playerCell = sheet.getCell(playerRowIndex, item.col);
             const playerCurrent = parseInt(playerCell.value, 10) || 0;
             playerCell.value = playerCurrent + item.qty;
         });
 
-        // Batch upload cell changes back to Google Sheets API
         await sheet.saveUpdatedCells();
 
         if (isNegativeUpdate) {
