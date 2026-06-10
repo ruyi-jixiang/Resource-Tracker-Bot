@@ -48,30 +48,30 @@ client.on(Events.MessageCreate, async (message) => {
 
     const content = message.content.toLowerCase();
 
-    // Comprehensive regex matches for ALL resource types in the layout
+    // Updated regexes with s? to handle both singular and plural inputs smoothly
     const matches = {
         'Charcoal': content.match(/(-?\+?\d+)\s*x?\s*charcoal/),
         'Coal Ore': content.match(/(-?\+?\d+)\s*x?\s*coal\s*ore/),
-        'Condensed Crystals': content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystal/),
-        'Copper Ingots': content.match(/(-?\+?\d+)\s*x?\s*copper\s*ingot/),
+        'Condensed Crystals': content.match(/(-?\+?\d+)\s*x?\s*condensed\s*crystals?/),
+        'Copper Ingots': content.match(/(-?\+?\d+)\s*x?\s*copper\s*ingots?/),
         'Copper Ore': content.match(/(-?\+?\d+)\s*x?\s*copper\s*ore/),
         'Gel': content.match(/(-?\+?\d+)\s*x?\s*gel/),
         'Glass': content.match(/(-?\+?\d+)\s*x?\s*glass/),
-        'Gold Ingots': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ingot/),
+        'Gold Ingots': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ingots?/),
         'Gold Ore': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ore/),
-        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*ingot)/), // ignores 'iron ingot'
-        'Iron Ingots': content.match(/(-?\+?\d+)\s*x?\s*iron\s*ingot/),
+        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*ingot)/), 
+        'Iron Ingots': content.match(/(-?\+?\d+)\s*x?\s*iron\s*ingots?/),
         'Leather': content.match(/(-?\+?\d+)\s*x?\s*leather/),
-        'Logs': content.match(/(-?\+?\d+)\s*x?\s*log/),
-        'Mana Crystals': content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystal/),
+        'Logs': content.match(/(-?\+?\d+)\s*x?\s*logs?/),
+        'Mana Crystals': content.match(/(-?\+?\d+)\s*x?\s*mana\s*crystals?/),
         'Sandstone': content.match(/(-?\+?\d+)\s*x?\s*sandstone/),
-        'Silver Ingots': content.match(/(-?\+?\d+)\s*x?\s*silver\s*ingot/),
+        'Silver Ingots': content.match(/(-?\+?\d+)\s*x?\s*silver\s*ingots?/),
         'Silver Ore': content.match(/(-?\+?\d+)\s*x?\s*silver\s*ore/),
-        'Sticks': content.match(/(-?\+?\d+)\s*x?\s*stick/),
-        'Stones': content.match(/(-?\+?\d+)\s*x?\s*stone/)
+        'Sticks': content.match(/(-?\+?\d+)\s*x?\s*sticks?/),
+        'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // Construct unified dynamic configuration array 
+    // Config keys match the spreadsheet column headers exactly
     const resourceConfig = [
         { key: 'Charcoal',           col: 2,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },
         { key: 'Coal Ore',           col: 3,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },
@@ -94,7 +94,6 @@ client.on(Events.MessageCreate, async (message) => {
         { key: 'Stones',             col: 20, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }
     ];
 
-    // Filter out items that have no alterations in the message
     const activeUpdates = resourceConfig.filter(item => item.qty !== 0);
     if (activeUpdates.length === 0) return;
 
@@ -108,13 +107,11 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // Expanded bounds to cover up to index 20 (Column U/V/W areas) safely
         await sheet.loadCells('A1:Y70'); 
 
-        // 1. Locate User Row (Column B, Index 1)
         let playerRowIndex = -1;
         for (let r = 7; r < 70; r++) { 
-            const cellValue = sheet.getCellValue ? sheet.getCell(r, 1).value : sheet.getCell(r, 1).value;
+            const cellValue = sheet.getCell(r, 1).value;
             if (cellValue && String(cellValue).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
                 break;
@@ -129,16 +126,15 @@ client.on(Events.MessageCreate, async (message) => {
 
         let isNegativeUpdate = false;
 
-        // 2. Dynamic spreadsheet manipulation loop
         activeUpdates.forEach(item => {
             if (item.qty < 0) isNegativeUpdate = true;
 
-            // Global Totals updates (Row 3, Index 2)
+            // Global Totals (Row 3, Index 2)
             const globalCell = sheet.getCell(2, item.col);
             const globalCurrent = parseInt(globalCell.value, 10) || 0;
             globalCell.value = globalCurrent + item.qty;
 
-            // Player specific row updates
+            // Player Specific Row Update
             const playerCell = sheet.getCell(playerRowIndex, item.col);
             const playerCurrent = parseInt(playerCell.value, 10) || 0;
             playerCell.value = playerCurrent + item.qty;
@@ -146,14 +142,12 @@ client.on(Events.MessageCreate, async (message) => {
 
         await sheet.saveUpdatedCells();
 
-        // Single clean reaction feedback
         if (isNegativeUpdate) {
             await message.react('🛠️'); 
         } else {
             await message.react('📦'); 
         }
 
-        // Announcement logger channel output
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
