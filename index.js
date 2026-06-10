@@ -34,6 +34,16 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Production Tracker Bot ONLINE as ${c.user.tag}`);
 });
 
+// Helper to normalize strings for robust item column matching
+function cleanKey(str) {
+    if (!str) return '';
+    let normalized = String(str).toLowerCase().trim();
+    if (normalized.endsWith('s')) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized.replace(/\s+/g, '');
+}
+
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
     if (message.channel.id !== RESOURCE_CHANNEL_ID) return;
@@ -70,30 +80,29 @@ client.on(Events.MessageCreate, async (message) => {
         'Stones': content.match(/(-?\+?\d+)\s*x?\s*stones?/)
     };
 
-    // Absolute indices mapping: Column A = 0, Column B = 1, Column C = 2, Column D = 3...
-    const resourceConfig = [
-        { key: 'Charcoal',           col: 3,  emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },           // D
-        { key: 'Coal Ore',           col: 4,  emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },           // E
-        { key: 'Condensed Crystals', col: 5,  emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 }, // F
-        { key: 'Copper Ingots',      col: 6,  emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },   // G
-        { key: 'Copper Ore',         col: 7,  emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },       // H
-        { key: 'Gel',                col: 8,  emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },                     // I
-        { key: 'Glass',              col: 9,  emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },                 // J
-        { key: 'Gold Ingots',        col: 10, emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },     // K
-        { key: 'Gold Ore',           col: 11, emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },         // L
-        { key: 'Iron',               col: 12, emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },                 // M
-        { key: 'Iron Ingots',        col: 13, emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },     // N
-        { key: 'Leather',            col: 14, emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },           // O
-        { key: 'Logs',               col: 15, emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },                 // P
-        { key: 'Mana Crystals',      col: 16, emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 }, // Q
-        { key: 'Sandstone',          col: 17, emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },         // R
-        { key: 'Silver Ingots',      col: 18, emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 }, // S
-        { key: 'Silver Ore',         col: 19, emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },     // T
-        { key: 'Sticks',             col: 20, emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },             // U
-        { key: 'Stones',             col: 21, emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }              // V
+    const resourceItems = [
+        { key: 'Charcoal',           emoji: '⬛', qty: matches['Charcoal'] ? parseInt(matches['Charcoal'][1], 10) : 0 },
+        { key: 'Coal Ore',           emoji: '🪨', qty: matches['Coal Ore'] ? parseInt(matches['Coal Ore'][1], 10) : 0 },
+        { key: 'Condensed Crystals', emoji: '🔮', qty: matches['Condensed Crystals'] ? parseInt(matches['Condensed Crystals'][1], 10) : 0 },
+        { key: 'Copper Ingots',      emoji: '🟧', qty: matches['Copper Ingots'] ? parseInt(matches['Copper Ingots'][1], 10) : 0 },
+        { key: 'Copper Ore',         emoji: '🟫', qty: matches['Copper Ore'] ? parseInt(matches['Copper Ore'][1], 10) : 0 },
+        { key: 'Gel',                emoji: '🟢', qty: matches['Gel'] ? parseInt(matches['Gel'][1], 10) : 0 },
+        { key: 'Glass',              emoji: '⬜', qty: matches['Glass'] ? parseInt(matches['Glass'][1], 10) : 0 },
+        { key: 'Gold Ingots',        emoji: '🟨', qty: matches['Gold Ingots'] ? parseInt(matches['Gold Ingots'][1], 10) : 0 },
+        { key: 'Gold Ore',           emoji: '🟡', qty: matches['Gold Ore'] ? parseInt(matches['Gold Ore'][1], 10) : 0 },
+        { key: 'Iron',               emoji: '🟥', qty: matches['Iron'] ? parseInt(matches['Iron'][1], 10) : 0 },
+        { key: 'Iron Ingots',        emoji: '🔩', qty: matches['Iron Ingots'] ? parseInt(matches['Iron Ingots'][1], 10) : 0 },
+        { key: 'Leather',            emoji: '🟫', qty: matches['Leather'] ? parseInt(matches['Leather'][1], 10) : 0 },
+        { key: 'Logs',               emoji: '🪵', qty: matches['Logs'] ? parseInt(matches['Logs'][1], 10) : 0 },
+        { key: 'Mana Crystals',      emoji: '🟦', qty: matches['Mana Crystals'] ? parseInt(matches['Mana Crystals'][1], 10) : 0 },
+        { key: 'Sandstone',          emoji: '🧱', qty: matches['Sandstone'] ? parseInt(matches['Sandstone'][1], 10) : 0 },
+        { key: 'Silver Ingots',      emoji: '🪙', qty: matches['Silver Ingots'] ? parseInt(matches['Silver Ingots'][1], 10) : 0 },
+        { key: 'Silver Ore',         emoji: '⚪', qty: matches['Silver Ore'] ? parseInt(matches['Silver Ore'][1], 10) : 0 },
+        { key: 'Sticks',             emoji: '🥢', qty: matches['Sticks'] ? parseInt(matches['Sticks'][1], 10) : 0 },
+        { key: 'Stones',             emoji: '🪨', qty: matches['Stones'] ? parseInt(matches['Stones'][1], 10) : 0 }
     ];
 
-    const activeUpdates = resourceConfig.filter(item => item.qty !== 0);
+    const activeUpdates = resourceItems.filter(item => item.qty !== 0);
     if (activeUpdates.length === 0) return;
 
     try {
@@ -106,10 +115,10 @@ client.on(Events.MessageCreate, async (message) => {
             return;
         }
 
-        // DYNAMIC FIX: Automatically lock onto the absolute limits of the sheet sizes to completely avoid out-of-bounds panics
         const maxRows = sheet.rowCount;
         const maxCols = sheet.columnCount;
 
+        // Preload layout boundaries safely matching sheet size limits
         await sheet.loadCells({ 
             startRowIndex: 0, 
             endRowIndex: maxRows, 
@@ -117,10 +126,40 @@ client.on(Events.MessageCreate, async (message) => {
             endColumnIndex: maxCols 
         }); 
 
+        // --- FIXED DYNAMIC HEADER SCANNER ---
+        // Reads Row 9 (Index 8 in API code) to map item columns dynamically
+        const columnMap = {};
+        for (let c = 0; c < maxCols; c++) {
+            const headerValue = sheet.getCell(8, c).value;
+            if (headerValue) {
+                const cleanedHeader = cleanKey(headerValue);
+                columnMap[cleanedHeader] = c;
+            }
+        }
+
+        const finalizedUpdates = [];
+        for (const item of activeUpdates) {
+            const lookUpKey = cleanKey(item.key);
+            if (columnMap[lookUpKey] !== undefined) {
+                finalizedUpdates.push({
+                    ...item,
+                    col: columnMap[lookUpKey]
+                });
+            } else {
+                console.warn(`⚠️ Layout notice: Could not map column header for resource: "${item.key}"`);
+            }
+        }
+
+        if (finalizedUpdates.length === 0) {
+            console.error("❌ Detected resources did not match any spreadsheet columns on Row 9.");
+            await message.react('❓');
+            return;
+        }
+
         // --- USER ROW LOCATOR ---
         let playerRowIndex = -1;
-        // Check Column B (index 1) for your player username entry
-        for (let r = 10; r < maxRows; r++) { 
+        // Scans Column B (Index 1) starting on Row 10 (Index 9) down to the bottom
+        for (let r = 9; r < maxRows; r++) { 
             const cell = sheet.getCell(r, 1); 
             if (cell && cell.value && String(cell.value).trim().toLowerCase() === robloxUsername) {
                 playerRowIndex = r;
@@ -129,28 +168,14 @@ client.on(Events.MessageCreate, async (message) => {
         }
 
         if (playerRowIndex === -1) {
-            console.error(`❌ Could not locate structural player row index for username: "${robloxUsername}"`);
+            console.error(`❌ Could not locate player row for username: "${robloxUsername}"`);
             await message.react('❓'); 
             return;
         }
 
         let isNegativeUpdate = false;
 
-        // Verify the tracked columns fit inside the sheet width before making changes
-        const safeUpdates = activeUpdates.filter(item => {
-            if (item.col >= maxCols) {
-                console.error(`⚠️ Configuration error: Column index ${item.col} for ${item.key} is out of sheet boundaries (Max: ${maxCols - 1}). Skipping.`);
-                return false;
-            }
-            return true;
-        });
-
-        if (safeUpdates.length === 0) {
-            await message.react('⚠️');
-            return;
-        }
-
-        safeUpdates.forEach(item => {
+        finalizedUpdates.forEach(item => {
             if (item.qty < 0) isNegativeUpdate = true;
 
             // Global Amount Stored Totals updates on Row 3 (Index 2)
@@ -175,7 +200,7 @@ client.on(Events.MessageCreate, async (message) => {
         const announceChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
         if (announceChannel) {
             let summary = `### 📑 Inventory Updated by ${message.author} (${displayName.split('|')[1].trim()})\n`;
-            safeUpdates.forEach(item => {
+            finalizedUpdates.forEach(item => {
                 const sign = item.qty > 0 ? `+${item.qty}` : `${item.qty}`;
                 const pTotal = sheet.getCell(playerRowIndex, item.col).value || 0;
                 summary += `• ${item.emoji} **${item.key}:** ${sign} *(Your Total: ${pTotal})*\n`;
