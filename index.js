@@ -38,7 +38,9 @@ client.once(Events.ClientReady, (c) => {
 function cleanKey(str) {
     if (!str) return '';
     let normalized = String(str).toLowerCase().trim();
-    if (normalized.endsWith('s')) {
+    
+    // FIXED: Protects "sticks" and "stones" from losing their trailing 's'
+    if (normalized.endsWith('s') && normalized !== 'sticks' && normalized !== 'stones') {
         normalized = normalized.slice(0, -1);
     }
     return normalized.replace(/\s+/g, '');
@@ -47,7 +49,7 @@ function cleanKey(str) {
 // Helper processor to handle a specific sheet update (Resources or Equipment)
 async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, message, displayName, modeText }) {
     const activeUpdates = itemsToScan.filter(item => item.qty !== 0);
-    if (activeUpdates.length === 0) return false; // Nothing found for this sheet
+    if (activeUpdates.length === 0) return false; 
 
     const sheet = doc.sheetsByIndex[sheetIndex]; 
     if (!sheet) {
@@ -106,18 +108,34 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
 
     let isNegativeUpdate = false;
 
+    // 1. Update the individual player's row first
     finalizedUpdates.forEach(item => {
         if (item.qty < 0) isNegativeUpdate = true;
 
-        // Global Combined Amount Stored (Row 3 -> Index 2)
-        const globalCell = sheet.getCell(2, item.col);
-        const globalCurrent = parseInt(globalCell.value, 10) || 0;
-        globalCell.value = globalCurrent + item.qty;
-
-        // Individual player cell
         const playerCell = sheet.getCell(playerRowIndex, item.col);
         const playerCurrent = parseInt(playerCell.value, 10) || 0;
         playerCell.value = playerCurrent + item.qty;
+    });
+
+    // 2. SELF-HEALING SUM SYSTEM
+    finalizedUpdates.forEach(item => {
+        let calculatedSum = 0;
+        
+        for (let r = 9; r < maxRows; r++) {
+            const playerCell = sheet.getCell(r, item.col);
+            if (playerCell && playerCell.value) {
+                const val = parseInt(playerCell.value, 10);
+                if (!isNaN(val)) {
+                    calculatedSum += val;
+                }
+            }
+        }
+
+        // Determine correct row for global totals based on tab type
+        const targetGlobalRowIndex = (sheetIndex === 2) ? 1 : 2;
+        
+        const globalCell = sheet.getCell(targetGlobalRowIndex, item.col);
+        globalCell.value = calculatedSum; 
     });
 
     await sheet.saveUpdatedCells();
@@ -168,7 +186,7 @@ client.on(Events.MessageCreate, async (message) => {
         'Glass': content.match(/(-?\+?\d+)\s*x?\s*glass/),
         'Gold Ingots': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ingots?/),
         'Gold Ore': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ore/),
-        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*(ingot|pellet))/), // 👈 FIXED: Ignores both ingots and pellets
+        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*(ingot|pellet))/), 
         'Iron Ingots': content.match(/(-?\+?\d+)\s*x?\s*iron\s*ingots?/),
         'Leather': content.match(/(-?\+?\d+)\s*x?\s*leather/),
         'Logs': content.match(/(-?\+?\d+)\s*x?\s*logs?/),
@@ -236,8 +254,7 @@ client.on(Events.MessageCreate, async (message) => {
     try {
         await doc.loadInfo();
 
-        // Run both processors. A user can even type resources AND equipment in the same message!
-        const updatedResources = await processSheetUpdate({
+        await processSheetUpdate({
             sheetIndex: 2,
             itemsToScan: resourceItems,
             robloxUsername,
@@ -246,7 +263,7 @@ client.on(Events.MessageCreate, async (message) => {
             modeText: "Inventory"
         });
 
-        const updatedEquipment = await processSheetUpdate({
+        await processSheetUpdate({
             sheetIndex: 3, 
             itemsToScan: equipmentItems,
             robloxUsername,
