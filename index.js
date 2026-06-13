@@ -108,7 +108,7 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
 
     let isNegativeUpdate = false;
 
-    // STEP 1: Apply individual changes locally
+    // STEP 1: Apply individual player changes locally
     finalizedUpdates.forEach(item => {
         if (item.qty < 0) isNegativeUpdate = true;
 
@@ -117,10 +117,10 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
         playerCell.value = playerCurrent + item.qty;
     });
 
-    // STEP 2: Save individual rows first to unlock the cells for calculations
+    // STEP 2: Save individual rows first
     await sheet.saveUpdatedCells();
 
-    // STEP 3: Reload info to clear out local transaction locks
+    // STEP 3: Reload information to clear transaction states cleanly
     await sheet.loadCells({ 
         startRowIndex: 0, 
         endRowIndex: maxRows, 
@@ -128,7 +128,7 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
         endColumnIndex: maxCols 
     });
 
-    // STEP 4: Run the clean mathematical summation calculation safely
+    // STEP 4: Run the safe math summation loop
     finalizedUpdates.forEach(item => {
         let calculatedSum = 0;
         
@@ -142,14 +142,14 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
             }
         }
 
-        // Determine correct row for global totals based on tab type
-        const targetGlobalRowIndex = (sheetIndex === 2) ? 1 : 2;
+        // FIXED: Both layouts have their target amounts row on Row 3 (Index 2)
+        const targetGlobalRowIndex = 2; 
         
         const globalCell = sheet.getCell(targetGlobalRowIndex, item.col);
         globalCell.value = calculatedSum; 
     });
 
-    // STEP 5: Final save for the self-healed top summary rows
+    // STEP 5: Final save for the self-healing calculation block
     await sheet.saveUpdatedCells();
 
     // Success Emojis
