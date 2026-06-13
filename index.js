@@ -39,7 +39,7 @@ function cleanKey(str) {
     if (!str) return '';
     let normalized = String(str).toLowerCase().trim();
     
-    // FIXED: Protects "sticks" and "stones" from losing their trailing 's'
+    // Protects "sticks" and "stones" from losing their trailing 's'
     if (normalized.endsWith('s') && normalized !== 'sticks' && normalized !== 'stones') {
         normalized = normalized.slice(0, -1);
     }
@@ -108,7 +108,7 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
 
     let isNegativeUpdate = false;
 
-    // 1. Update the individual player's row first
+    // STEP 1: Apply individual changes locally
     finalizedUpdates.forEach(item => {
         if (item.qty < 0) isNegativeUpdate = true;
 
@@ -117,7 +117,18 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
         playerCell.value = playerCurrent + item.qty;
     });
 
-    // 2. SELF-HEALING SUM SYSTEM
+    // STEP 2: Save individual rows first to unlock the cells for calculations
+    await sheet.saveUpdatedCells();
+
+    // STEP 3: Reload info to clear out local transaction locks
+    await sheet.loadCells({ 
+        startRowIndex: 0, 
+        endRowIndex: maxRows, 
+        startColumnIndex: 0, 
+        endColumnIndex: maxCols 
+    });
+
+    // STEP 4: Run the clean mathematical summation calculation safely
     finalizedUpdates.forEach(item => {
         let calculatedSum = 0;
         
@@ -138,6 +149,7 @@ async function processSheetUpdate({ sheetIndex, itemsToScan, robloxUsername, mes
         globalCell.value = calculatedSum; 
     });
 
+    // STEP 5: Final save for the self-healed top summary rows
     await sheet.saveUpdatedCells();
 
     // Success Emojis
