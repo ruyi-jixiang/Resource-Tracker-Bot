@@ -168,7 +168,7 @@ client.on(Events.MessageCreate, async (message) => {
         'Glass': content.match(/(-?\+?\d+)\s*x?\s*glass/),
         'Gold Ingots': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ingots?/),
         'Gold Ore': content.match(/(-?\+?\d+)\s*x?\s*gold\s*ore/),
-        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*ingot)/), 
+        'Iron': content.match(/(-?\+?\d+)\s*x?\s*iron(?!\s*(ingot|pellet))/), // 👈 FIXED: Ignores both ingots and pellets
         'Iron Ingots': content.match(/(-?\+?\d+)\s*x?\s*iron\s*ingots?/),
         'Leather': content.match(/(-?\+?\d+)\s*x?\s*leather/),
         'Logs': content.match(/(-?\+?\d+)\s*x?\s*logs?/),
@@ -247,7 +247,7 @@ client.on(Events.MessageCreate, async (message) => {
         });
 
         const updatedEquipment = await processSheetUpdate({
-            sheetIndex: 3, // Assumed index position of your Equipment sheet
+            sheetIndex: 3, 
             itemsToScan: equipmentItems,
             robloxUsername,
             message,
